@@ -1,0 +1,6 @@
+ignore/
+*.pyc
+__pycache__/
+src/
+description.md
+readme.md

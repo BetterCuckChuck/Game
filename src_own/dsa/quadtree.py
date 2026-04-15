@@ -1,16 +1,26 @@
 import pygame
 
 class QuadTree:
-    """Lớp QuadTree sử dụng trong Xử lí va chạm."""
+    """
+    Lớp QuadTree sử dụng trong Xử lí va chạm.
+    
+    Attributes:
+        objects (list): Danh sách các đối tượng Node quản lý.
+        divided (bool): Cờ đánh dấu Node vượt quá capacity.
+        boundary (pygame.Rect): pygame.Rect quản lý không gian của Node.
+        capacity (int): Số lượng đối tượng tối đa trước khi Cây Tứ Phân thực hiện chia nhỏ.
+    """
     def __init__(self, boundary, capacity=4):
         """Hàm khởi tạo thiết lập các thuộc tính ban đầu cho đối tượng."""
-        self.boundary = boundary # pygame.Rect
+        self.boundary = boundary
         self.capacity = capacity
         self.objects = []
         self.divided = False
 
+
+
     def subdivide(self):
-        """Phân chia Node hiện tại thành 4 tứ phân: Đông Bắc, Tây Bắc, Đông Nam, Tây Nam."""
+        """Phân chia Node hiện tại thành 4 phần: Đông Bắc, Tây Bắc, Đông Nam, Tây Nam."""
         x, y, w, h = self.boundary.x, self.boundary.y, self.boundary.w, self.boundary.h
         hw, hh = w / 2, h / 2
         
@@ -21,12 +31,8 @@ class QuadTree:
         self.divided = True
 
     def insert(self, obj):
-        # We assume obj has a `boundingRect` attribute (standard in original VectorSprite)
-        """Nạp một đối tượng (có boundingRect) vào Cây Tứ Phân."""
-        if not hasattr(obj, 'boundingRect') or obj.boundingRect is None:
-            return False
-            
-        if not self.boundary.colliderect(obj.boundingRect):
+        """Nạp một đối tượng vào Cây Tứ Phân."""
+        if not self.boundary.colliderect(obj.rect):
             return False
 
         if len(self.objects) < self.capacity:
@@ -47,7 +53,7 @@ class QuadTree:
             return
 
         for obj in self.objects:
-            if range_rect.colliderect(obj.boundingRect):
+            if range_rect.colliderect(obj.rect):
                 if obj not in found:
                     found.append(obj)
 
@@ -60,6 +66,5 @@ class QuadTree:
     def get_potential_intersections(self, target):
         """Trích xuất những phần tử lân cận nằm chung khu vực phân vùng (Tối ưu tìm kiếm)."""
         found = []
-        if hasattr(target, 'boundingRect') and target.boundingRect is not None:
-            self.query(target.boundingRect, found)
+        self.query(target.rect, found)
         return found

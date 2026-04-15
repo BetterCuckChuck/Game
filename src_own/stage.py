@@ -50,7 +50,7 @@ class Stage:
     def addSprite(self, sprite):
         """Đưa đối tượng mới vào danh sách cần theo dõi hình họa."""
         self.spriteList.append(sprite)
-        sprite.boundingRect = pygame.draw.aalines(
+        sprite.rect = pygame.draw.aalines(
             self.screen, sprite.color, True, sprite.draw())
 
     def removeSprite(self, sprite):
@@ -60,11 +60,11 @@ class Stage:
     def drawSprites(self):
         """Vẽ lại toàn bộ thực thể được theo dõi bao gồm cả bounding box."""
         for sprite in self.spriteList:
-            sprite.boundingRect = pygame.draw.aalines(
+            sprite.rect = pygame.draw.aalines(
                 self.screen, sprite.color, True, sprite.draw())
             if self.showBoundingBoxes == True:
                 pygame.draw.rect(self.screen, (255, 255, 255),
-                                 sprite.boundingRect, 1)
+                                 sprite.rect, 1)
 
     def moveSprites(self):
         """Xử lý định luật di chuyển (Vector Move) và vòng lặp màn hình (Screen Wrapping)."""

@@ -26,7 +26,15 @@ from soundManager import *
 class Rock(VectorSprite):
     
     # indexes into the tuples below
-    """Quản lý thuộc tính và Logic của Thiên thạch (Tiểu Hành Tinh)."""
+    """
+    Lớp Quản lý thuộc tính và Logic của Thiên thạch.
+    
+    Attributes:
+        rockType (int): Phân loại kích cỡ khối đá (0: To, 1: Vừa, 2: Nhỏ).
+        rockShape (int): Biến số xoay vòng tạo hình dáng ngẫu nhiên cho cục đá.
+        velocities (tuple): Bảng tra tốc độ tương ứng với kích cỡ (càng nhỏ càng nhanh).
+        scales (tuple): Bảng tra tỷ lệ phóng đại (ngoại cỡ).
+    """
     largeRockType = 0
     mediumRockType = 1
     smallRockType = 2   
@@ -61,7 +69,7 @@ class Rock(VectorSprite):
     # Create different rock type pointlists    
     def createPointList(self):
         
-        """Nạp mảng PointList tọa độ các điểm nhọn của Khối đá đồ họa."""
+        """Nạp mảng PointList tọa độ các điểm của Thiên thạch."""
         if (Rock.rockShape == 1):
             pointlist = [(-4,-12), (6,-12), (13, -4), (13, 5), (6, 13), (0,13), (0,4),\
                      (-8,13), (-15, 4), (-7,1), (-15,-3)]
@@ -98,7 +106,12 @@ class Rock(VectorSprite):
 
 class Debris(Point):    
      
-    """Quản lý hiệu ứng Lệch (Hạt vỡ rác bay không trọng lực)."""
+    """
+    Lớp Quản lý thiên thạch vụn (Debris).
+    
+    Attributes:
+        ttl (int): Tuổi thọ của hạt bụi (50 frames).
+    """
     def __init__(self, position, stage):
         """Hàm khởi tạo thiết lập các thuộc tính ban đầu cho đối tượng."""
         heading = Vector2d(random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5))
@@ -119,7 +132,16 @@ class Debris(Point):
 class Saucer(Shooter):
     
     # indexes into the tuples below
-    """Lớp Địch tự hành (Enemy), có quỹ đạo dạo trên màn hình theo chiều Sin/Cos."""
+    """
+    Lớp Địch (Enemy).
+    
+    Attributes:
+        saucerType (int): Loại đĩa bay (0: Lớn, 1: Nhỏ).
+        ship (Ship): Đối tượng tàu nhân vật chính để Đĩa bay biết đường nhắm bắn mục tiêu.
+        scoreValue (int): Điểm người chơi nhận được khi tiêu diệt.
+        laps (int): Số vòng Đĩa bay lượn qua lượn lại trên màn hình.
+        lastx (float): Tọa độ X cũ dùng so sánh chiều di chuyển.
+    """
     largeSaucerType = 0
     smallSaucerType = 1
 

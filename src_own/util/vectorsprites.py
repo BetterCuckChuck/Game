@@ -22,13 +22,24 @@ import os
 import math
 import random
 from math import *
-from util.vector2d import *
+from pygame.math import Vector2 as Vector2d
 from util.geometry import *
 
 
 class VectorSprite:
 
-    """Lớp Cơ Sở hình dáng Học hỗ trợ cho mọi thực thể logic xoay (Rotate) và di chuyển (Transform)."""
+    """
+    Lớp hỗ trợ cho logic xoay (Rotate) và di chuyển (Transform) của thực thể.
+    
+    Attributes:
+        position (Vector2d): Tọa độ (X, Y) của thực thể.
+        heading (Vector2d): Vector gia tốc.
+        angle (float/int): Góc nghiêng/xoay hiện tại so với phương thẳng đứng ban đầu.
+        vAngle (float/int): Gia tốc tự xoay.
+        pointlist (list): Danh sách mảng các điểm của vật thể (Origin Point) dùng để vẽ cấu trúc Đa giác.
+        color (tuple): Bộ màu RGB hiển thị.
+        ttl (int): (Time-To-Live) số frame còn lại trước khi đối tượng tự phân mảnh hoặc biến mất.
+    """
     def __init__(self, position, heading, pointlist, angle=0, color=(255, 255, 255)):
         """Hàm khởi tạo thiết lập các thuộc tính ban đầu cho đối tượng."""
         self.position = position
@@ -98,7 +109,7 @@ class VectorSprite:
 
     def collidesWith(self, target):
         """Xác nhận hộp biên (BoundingRect) của hai yếu tố có trùng lập với nhau hay không."""
-        if self.boundingRect.colliderect(target.boundingRect):
+        if self.rect.colliderect(target.rect):
             return True
         else:
             return False
@@ -125,7 +136,13 @@ class VectorSprite:
 class Point(VectorSprite):
 
     # Class attributes
-    """Lớp Point đại diện cho hệ thống tương ứng."""
+    """
+    Lớp Point đại diện cho một Điểm trên màn hình (đạn).
+    
+    Attributes:
+        stage (Stage): Đối tượng màn chơi chứa danh sách danh mục gốc.
+        ttl (int): Tuổi thọ đếm lùi trước khi tự hủy khỏi Stage.
+    """
     pointlist = [(0, 0), (1, 1), (1, 0), (0, 1)]
 
     def __init__(self, position, heading, stage):

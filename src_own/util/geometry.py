@@ -33,7 +33,7 @@ from pygame import Rect
 def calculateGradient(p1, p2):
 
     # Ensure that the line is not vertical
-    """Hàm bổ trợ mở rộng calculateGradient xử lý tác vụ tương ứng."""
+    """Tính hệ số góc (Gradient 'm') của một đường thẳng tạo bởi 2 điểm p1 và p2."""
     if (p1[0] != p2[0]):
         m = (p1[1] - p2[1]) / (p1[0] - p2[0])
         return m
@@ -44,7 +44,7 @@ def calculateGradient(p1, p2):
 
 
 def calculateYAxisIntersect(p, m):
-    """Hàm bổ trợ mở rộng calculateYAxisIntersect xử lý tác vụ tương ứng."""
+    """Tính tọa độ y ('b') tại điểm giao cắt giữa đường thẳng và Trục Tung."""
     return p[1] - (m * p[0])
 
 # Calc the point where two infinitely long lines (p1 to p2 and p3 to p4) intersect.
@@ -56,7 +56,7 @@ def calculateYAxisIntersect(p, m):
 
 
 def getIntersectPoint(p1, p2, p3, p4):
-    """Hàm bổ trợ mở rộng getIntersectPoint xử lý tác vụ tương ứng."""
+    """Tìm tọa độ cắt nhau của 2 ĐƯỜNG thẳng kéo dài vô cực."""
     m1 = calculateGradient(p1, p2)
     m2 = calculateGradient(p3, p4)
 
@@ -83,7 +83,7 @@ def getIntersectPoint(p1, p2, p3, p4):
                 x = p3[0]
                 y = (m1 * x) + b1
             else:
-                assert false
+                assert False
 
         return ((x, y),)
     else:
@@ -114,7 +114,7 @@ def getIntersectPoint(p1, p2, p3, p4):
 
 def calculateIntersectPoint(p1, p2, p3, p4):
 
-    """Hàm bổ trợ mở rộng calculateIntersectPoint xử lý tác vụ tương ứng."""
+    """Xác nhận tọa độ giao điểm có nằm vỏn vẹn trong phạm vi của 2 ĐOẠN thẳng hữu hạn hay không."""
     p = getIntersectPoint(p1, p2, p3, p4)
 
     if p is not None:
@@ -208,5 +208,4 @@ if __name__ == "__main__":
     assert None != calculateIntersectPoint(
         p9, p10, p7, p8), "line 5 line 4 should intersect"
 
-    print("
-SUCCESS! All asserts passed for doLinesIntersect")
+    print("\nSUCCESS! All asserts passed for doLinesIntersect")

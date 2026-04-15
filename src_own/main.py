@@ -36,7 +36,7 @@ from pygame.locals import *
 from util.vectorsprites import *
 from ship import *
 from stage import *
-from badies import *
+from enemies import *
 from shooter import *
 from soundManager import *
 from dsa.quadtree import QuadTree
@@ -44,7 +44,23 @@ from dsa.quadtree import QuadTree
 
 class Asteroids():
 
-    """Lớp điều khiển chính (Controller) chạy toàn bộ vòng lặp sự kiện Asteroids."""
+    """
+    Lớp điều khiển chính xử lý vòng lặp Game.
+    
+    Attributes:
+        explodingTtl (int): Thời gian hiển thị Tàu bị phá hủy trước khi trừ mạng và hồi sinh.
+        stage (Stage): Đối tượng khung màn hình quản lý.
+        paused (bool): Cờ chặn vòng lặp để Tạm dừng game.
+        showingFPS (bool): Bật/Tắt hiển thị FPS.
+        frameAdvance (bool): Cờ gỡ lỗi cho phép tua Game từng Frame một (để Debug).
+        gameState (str): Trạng thái Màn chơi ("attract_mode" chờ ở Menu, "playing" đang chơi).
+        rockList (list): Cấu trúc mảng chứa toàn bộ Thiên thạch.
+        saucer (Saucer): Đối tượng Đĩa bay địch.
+        secondsCount (int): Đồng hồ đếm Tick của Game.
+        score (int): Hệ thống tính điểm.
+        ship (Ship): Tàu vũ trụ - nhân vật do người chơi điều khiển.
+        lives (int): Số Mạng còn lại của tàu.
+    """
     explodingTtl = 180
 
     def __init__(self):
@@ -102,8 +118,8 @@ class Asteroids():
         ship = Ship(self.stage)
         self.stage.addSprite(ship)
         ship.position.x = self.stage.width - \
-            (lifeNumber * ship.boundingRect.width) - 10
-        ship.position.y = 0 + ship.boundingRect.height
+            (lifeNumber * ship.rect.width) - 10
+        ship.position.y = 0 + ship.rect.height
         self.livesList.append(ship)
 
     def createRocks(self, numRocks):

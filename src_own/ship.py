@@ -26,7 +26,18 @@ from soundManager import *
 class Ship(Shooter):
 
     # Class attributes
-    """Quản lý chỉ số, thao tác điều khiển nhân vật chính của chúng ta."""
+    """
+    Lớp Quản lý tàu người chơi điều khiển.
+    
+    Attributes:
+        acceleration (float): Lực giật đẩy chân ga.
+        decelaration (float): Lực ma sát làm tàu chậm dần.
+        maxVelocity (int): Tốc độ di chuyển tối đa cho phép.
+        thrustJet (ThrustJet): Đối tượng tia lửa phụt ra dưới đuôi tàu.
+        shipDebrisList (list): Lưu các mảnh vụn khi tàu nổ tung.
+        visible (bool): Trạng thái hiển thị hay tàng hình (khi đang hồi sinh).
+        inHyperSpace (bool): Cờ trạng thái nhảy không gian (miễn nhiễm sát thương).
+    """
     acceleration = 0.2
     decelaration = -0.005
     maxVelocity = 10
@@ -135,8 +146,8 @@ class Ship(Shooter):
         self.stage.addSprite(debris)
 
         # Calc a velocity moving away from the ship's center
-        centerX = debris.boundingRect.centerx
-        centerY = debris.boundingRect.centery
+        centerX = debris.rect.centerx
+        centerY = debris.rect.centery
 
         # Alter the random values below to change the rate of expansion
         debris.heading.x = ((centerX - self.position.x) +
@@ -169,7 +180,13 @@ class Ship(Shooter):
 
 # Exhaust jet when ship is accelerating
 class ThrustJet(VectorSprite):
-    """Thể hiện ngọn lửa (Flame Jet) sau đuôi tàu khi phi hành gia ấn phím Phản lực."""
+    """
+    Lớp Quản lý ngọn lửa sau đuôi tàu khi tăng tốc tàu.
+    
+    Attributes:
+        accelerating (bool): Công tắc đang tăng tốc (sinh lửa) hay giảm tốc.
+        ship (Ship): Chủ thể Tàu vũ trụ mà ngọn lửa gắn vào.
+    """
     pointlist = [(-3, 7), (0, 13), (3, 7)]
 
     def __init__(self, stage, ship):

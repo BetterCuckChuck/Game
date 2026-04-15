@@ -23,7 +23,13 @@ from util import *
 
 class Shooter(VectorSprite):
 
-    """Lớp Kế Thừa trừu tượng đại diện cho bất kì Thực thể nào Biết Cầm Súng bắn Đạn."""
+    """
+    Lớp Kế Thừa trừu tượng đại diện cho bất kì Thực thể nào Biết Cầm Súng bắn Đạn.
+    
+    Attributes:
+        bullets (list): Mảng lưu trữ các viên kích xuất hiện hành.
+        stage (Stage): Đối tượng Màn hình gốc để sinh đạn lên đó.
+    """
     def __init__(self, position, heading, pointlist, stage):
         """Hàm khởi tạo thiết lập các thuộc tính ban đầu cho đối tượng."""
         VectorSprite.__init__(self, position, heading, pointlist)
@@ -55,7 +61,14 @@ class Shooter(VectorSprite):
 
 class Bullet(Point):
 
-    """Lớp Bullet đại diện cho hệ thống tương ứng."""
+    """
+    Lớp Bullet đại diện cho đạn.
+    
+    Attributes:
+        shooter (Shooter): Đối tượng bắn đạn.
+        ttl (int): Vòng đời của viên đạn.
+        velocity (float): Tốc độ bay của viên đạn.
+    """
     def __init__(self, position, heading, shooter, ttl, velocity, stage):
         """Hàm khởi tạo thiết lập các thuộc tính ban đầu cho đối tượng."""
         Point.__init__(self, position, heading, stage)

@@ -1,20 +1,8 @@
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-#    Copyright (C) 2008  Nick Redshaw
-#    Copyright (C) 2018  Francisco Sanchez Arroyo
-#
+"""Module quản lý âm thanh cho game Asteroids.
+
+Cung cấp các hàm nạp, phát, dừng, và tắt tiếng (mute)
+toàn bộ hiệu ứng âm thanh thông qua pygame.mixer.
+"""
 
 import pygame
 import sys
@@ -22,11 +10,13 @@ import os
 import random
 from pygame.locals import *
 
-sounds = {}  # create empty dictionary of sounds
+sounds = {}  
+
+is_muted = False
 
 
 def initSoundManager():
-    """Hàm bổ trợ mở rộng initSoundManager xử lý tác vụ tương ứng."""
+    """Khởi tạo mixer và nạp toàn bộ file âm thanh từ đĩa."""
     pygame.mixer.init()
     sounds["fire"] = pygame.mixer.Sound("../res/FIRE.WAV")
     sounds["explode1"] = pygame.mixer.Sound("../res/EXPLODE1.WAV")
@@ -39,16 +29,42 @@ def initSoundManager():
     sounds["extralife"] = pygame.mixer.Sound("../res/LIFE.WAV")
 
 
+def toggleMute():
+    """Bật/tắt trạng thái mute toàn cục.
+
+    Khi chuyển sang mute, tất cả âm thanh đang phát sẽ bị dừng ngay.
+    """
+    global is_muted
+    is_muted = not is_muted
+    if is_muted:
+        for sound in sounds.values():
+            sound.stop()
+
+
 def playSound(soundName):
-    """Hàm bổ trợ mở rộng playSound xử lý tác vụ tương ứng."""
-    channel = sounds[soundName].play()
+    """Phát một hiệu ứng âm thanh một lần.
+
+    Args:
+        soundName: Khóa định danh âm thanh trong dictionary sounds.
+    """
+    if not is_muted:
+        channel = sounds[soundName].play()
 
 
 def playSoundContinuous(soundName):
-    """Hàm bổ trợ mở rộng playSoundContinuous xử lý tác vụ tương ứng."""
-    channel = sounds[soundName].play(-1)
+    """Phát một hiệu ứng âm thanh lặp liên tục.
+
+    Args:
+        soundName: Khóa định danh âm thanh trong dictionary sounds.
+    """
+    if not is_muted:
+        channel = sounds[soundName].play(-1)
 
 
 def stopSound(soundName):
-    """Hàm bổ trợ mở rộng stopSound xử lý tác vụ tương ứng."""
+    """Dừng một hiệu ứng âm thanh đang phát.
+
+    Args:
+        soundName: Khóa định danh âm thanh trong dictionary sounds.
+    """
     channel = sounds[soundName].stop()

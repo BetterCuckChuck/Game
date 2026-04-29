@@ -1,0 +1,970 @@
+============================================================
+File: main.py
+============================================================
+
+[Module]
+Entry point và controller chính của game Asteroids.
+
+Cài đặt lớp Asteroids chứa vòng lặp game chính, máy trạng thái,
+pipeline phát hiện va chạm, hệ thống tính điểm, và quản lý
+vòng đời thực thể.
+
+[Class: Asteroids]
+Controller chính quản lý vòng lặp game và trạng thái.
+
+Điều phối tất cả hệ thống con bao gồm render, xử lý input,
+phát hiện va chạm, tính điểm, và quản lý vòng đời thực thể.
+
+Attributes:
+    explodingTtl: Thời lượng animation phá hủy tàu (frame).
+    stage: Instance Stage quản lý display surface.
+    paused: Game có đang tạm dừng hay không.
+    showingFPS: Có hiển thị bộ đếm FPS hay không.
+    frameAdvance: Cờ debug cho chế độ bước từng frame.
+    gameState: Trạng thái hiện tại ('attract_mode', 'playing', 'exploding').
+    rockList: Danh sách toàn bộ instance Rock đang hoạt động.
+    saucer: Instance Saucer đang hoạt động, hoặc None.
+    secondsCount: Bộ đếm frame dùng cho các sự kiện định thời.
+    score: Điểm hiện tại của người chơi.
+    ship: Instance Ship của người chơi.
+    lives: Số mạng còn lại.
+
+[Asteroids.__init__()]
+Khởi tạo game ở chế độ attract mode với cấu hình mặc định.
+
+[Asteroids.initialiseGame()]
+Đặt lại toàn bộ trạng thái game và bắt đầu phiên chơi mới.
+
+[Asteroids.createNewShip()]
+Tạo tàu người chơi mới tại tâm màn hình và đăng ký sprite.
+
+[Asteroids.createLivesList()]
+Tạo các icon đếm mạng trên HUD ở góc phải trên.
+
+[Asteroids.addLife()]
+Thêm icon mạng vào HUD và tăng bộ đếm mạng.
+
+Args:
+    lifeNumber: Vị trí thứ tự của icon mạng dùng cho layout.
+
+[Asteroids.createRocks()]
+Spawn thiên thạch lớn tại các rìa màn hình ngẫu nhiên.
+
+Args:
+    numRocks: Số thiên thạch lớn cần spawn.
+
+[Asteroids.playGame()]
+Chạy vòng lặp game chính ở 60 FPS.
+
+[Asteroids.playing()]
+Xử lý logic mỗi frame khi game đang ở trạng thái playing.
+
+[Asteroids.doSaucerLogic()]
+Quản lý vòng đời đĩa bay: despawn khi đạt giới hạn lap và spawn đĩa bay mới theo timer.
+
+[Asteroids.exploding()]
+Xử lý animation phá hủy tàu và đếm ngược respawn.
+
+[Asteroids.levelUp()]
+Tăng cấp độ khó bằng cách spawn thêm thiên thạch.
+
+[Asteroids.displayText()]
+Render màn hình tiêu đề với tên game, hướng dẫn, và bản quyền.
+
+[Asteroids.displayScore()]
+Render điểm số hiện tại ở góc trái trên màn hình.
+
+[Asteroids.displayPaused()]
+Render overlay tạm dừng khi game bị pause.
+
+[Asteroids.input()]
+Xử lý các sự kiện input pygame cho điều khiển game.
+
+Args:
+    events: Danh sách sự kiện pygame từ frame hiện tại.
+
+[Asteroids.processKeys()]
+Đọc trạng thái phím giữ cho điều khiển liên tục (đẩy, xoay).
+
+[Asteroids.checkCollisions()]
+Thực hiện toàn bộ kiểm tra va chạm bằng QuadTree phân vùng không gian.
+
+Xử lý va chạm thiên thạch-thiên thạch, thiên thạch-tàu,
+thiên thạch-đĩa bay, đạn-thiên thạch, và đạn-đĩa bay.
+Quản lý phân mảnh thiên thạch, cập nhật điểm, và phá hủy thực thể.
+
+[Asteroids.killShip()]
+Phá hủy tàu người chơi, kích hoạt hiệu ứng nổ, và chuyển sang trạng thái exploding.
+
+[Asteroids.killSaucer()]
+Phá hủy đĩa bay đang hoạt động, dừng âm thanh, và xóa tham chiếu.
+
+[Asteroids.createDebris()]
+Spawn hạt debris tại vị trí sprite, kế thừa màu của sprite.
+
+Args:
+    sprite: Sprite bị phá hủy dùng để tạo debris.
+
+[Asteroids.displayFps()]
+Render bộ đếm FPS hiện tại ở giữa trên màn hình.
+
+[Asteroids.checkScore()]
+Thưởng thêm một mạng khi điểm vượt mốc 10.000 điểm.
+
+============================================================
+File: ship.py
+============================================================
+
+[Module]
+Tàu người chơi và hiệu ứng lửa động cơ.
+
+Cung cấp lớp Ship cho tàu vũ trụ do người chơi điều khiển với
+hệ thống đẩy, xoay, hyperspace, và vũ khí, cùng lớp ThrustJet
+cho hiệu ứng khí xả động cơ.
+
+[Class: Ship]
+Tàu vũ trụ do người chơi điều khiển với hệ thống đẩy, xoay, và vũ khí.
+
+Xử lý gia tốc, giảm tốc, xoay, dịch chuyển hyperspace,
+bắn đạn, và hiệu ứng phá hủy.
+
+Attributes:
+    acceleration: Lực đẩy áp dụng mỗi frame.
+    decelaration: Hệ số ma sát áp dụng mỗi frame.
+    maxVelocity: Giới hạn tốc độ tối đa.
+    thrustJet: Instance ThrustJet cho hiệu ứng khí xả.
+    shipDebrisList: Danh sách mảnh vụn khi tàu bị phá hủy.
+    visible: Tàu có đang được render hay không.
+    inHyperSpace: Tàu có đang trong trạng thái hyperspace (bất tử) hay không.
+
+[Ship.__init__()]
+Khởi tạo tàu tại tâm màn hình với cấu hình mặc định.
+
+Args:
+    stage: Instance Stage quản lý sprite.
+
+[Ship.draw()]
+Render tàu, xử lý chuyển tiếp khi thoát hyperspace.
+
+Returns:
+    Danh sách các đỉnh đa giác đã biến đổi.
+
+[Ship.rotateLeft()]
+Xoay tàu ngược chiều kim đồng hồ một góc turnAngle.
+
+[Ship.rotateRight()]
+Xoay tàu theo chiều kim đồng hồ một góc turnAngle.
+
+[Ship.increaseThrust()]
+Áp dụng lực đẩy theo hướng mũi tàu hiện tại.
+
+Lực đẩy bị giới hạn tại maxVelocity. Phát âm thanh thrust.
+
+[Ship.decreaseThrust()]
+Áp dụng ma sát để giảm dần vận tốc.
+
+Dừng âm thanh thrust khi được gọi.
+
+[Ship.changeVelocity()]
+Thay đổi vận tốc của cả tàu và thrust jet.
+
+Args:
+    dx: Lượng thay đổi vận tốc theo trục ngang.
+    dy: Lượng thay đổi vận tốc theo trục dọc.
+
+[Ship.move()]
+Cập nhật vị trí và áp dụng ma sát giảm tốc.
+
+[Ship.explode()]
+Phân rã tàu thành các mảnh vụn riêng lẻ theo từng cạnh.
+
+[Ship.addShipDebris()]
+Tạo một mảnh vụn từ một cạnh của tàu.
+
+Mảnh vụn kế thừa màu của tàu và trôi ra xa tâm tàu
+với vận tốc ngẫu nhiên.
+
+Args:
+    pointlist: Danh sách hai điểm xác định cạnh.
+
+[Ship.fireBullet()]
+Bắn đạn theo hướng mũi tàu hiện tại.
+
+Không bắn được khi đang trong trạng thái hyperspace.
+
+[Ship.enterHyperSpace()]
+Kích hoạt nhảy hyperspace, ẩn tàu và bật trạng thái bất tử.
+
+Tàu xuất hiện lại tại vị trí ngẫu nhiên sau khi hết thời gian
+hyperspace.
+
+[Class: ThrustJet]
+Hiệu ứng khí xả động cơ gắn liền với tàu người chơi.
+
+Render ngọn lửa tam giác phía sau tàu khi đang đẩy.
+Ẩn đi khi tàu không đẩy hoặc đang trong hyperspace.
+
+Attributes:
+    accelerating: Động cơ có đang hoạt động hay không.
+    ship: Tham chiếu đến instance Ship gốc.
+
+[ThrustJet.__init__()]
+Khởi tạo thrust jet gắn với tàu.
+
+Args:
+    stage: Instance Stage quản lý sprite.
+    ship: Instance Ship gốc.
+
+[ThrustJet.draw()]
+Render ngọn lửa, bật/tắt hiển thị theo trạng thái động cơ.
+
+Returns:
+    Danh sách các đỉnh đa giác đã biến đổi.
+
+============================================================
+File: shooter.py
+============================================================
+
+[Module]
+Lớp cơ sở Shooter và lớp đạn Bullet.
+
+Định nghĩa mixin Shooter cho các thực thể có khả năng bắn đạn,
+và lớp Bullet đại diện cho từng viên đạn riêng lẻ.
+
+[Class: Shooter]
+Lớp cơ sở trừu tượng cho các thực thể có khả năng bắn đạn.
+
+Quản lý danh sách đạn đang hoạt động và cung cấp các phương thức
+bắn đạn mới, phát hiện va chạm đạn-mục tiêu.
+
+Attributes:
+    bullets: Danh sách các instance Bullet đang hoạt động.
+    stage: Instance Stage quản lý sprite.
+
+[Shooter.__init__()]
+Khởi tạo Shooter với vị trí và tham chiếu Stage.
+
+Args:
+    position: Vị trí world-space, dạng Vector2d.
+    heading: Vector vận tốc, dạng Vector2d.
+    pointlist: Danh sách đỉnh đa giác xác định hình dạng.
+    stage: Instance Stage quản lý sprite.
+
+[Shooter.fireBullet()]
+Tạo viên đạn mới nếu chưa đạt giới hạn băng đạn.
+
+Args:
+    heading: Vector vận tốc của đạn, dạng Vector2d.
+    ttl: Thời gian sống tính bằng frame.
+    velocity: Tốc độ vô hướng của đạn.
+
+Returns:
+    True nếu đạn được tạo thành công, None nếu băng đạn đầy.
+
+[Shooter.bulletCollision()]
+Kiểm tra đạn đang hoạt động có trúng mục tiêu không.
+
+Đạn trúng mục tiêu sẽ bị đặt ttl về 0.
+
+Args:
+    target: VectorSprite cần kiểm tra va chạm.
+
+Returns:
+    True nếu ít nhất một viên đạn trúng, False nếu không.
+
+[Class: Bullet]
+Viên đạn được bắn ra bởi một Shooter.
+
+Kế thừa màu từ Shooter đã bắn nó. Tự gỡ khỏi danh sách đạn
+của Shooter khi hết thời gian sống.
+
+Attributes:
+    shooter: Instance Shooter đã bắn viên đạn này.
+    ttl: Số frame còn lại trước khi hết hạn.
+    velocity: Tốc độ vô hướng của đạn.
+
+[Bullet.__init__()]
+Khởi tạo đạn với quỹ đạo và quyền sở hữu.
+
+Args:
+    position: Vị trí spawn, dạng Vector2d.
+    heading: Vector vận tốc, dạng Vector2d.
+    shooter: Instance Shooter sở hữu viên đạn.
+    ttl: Thời gian sống tính bằng frame.
+    velocity: Tốc độ vô hướng của đạn.
+    stage: Instance Stage quản lý sprite.
+
+[Bullet.move()]
+Cập nhật vị trí và gỡ khỏi danh sách đạn khi hết hạn.
+
+============================================================
+File: stage.py
+============================================================
+
+[Module]
+Module quản lý Stage cho game Asteroids.
+
+Xử lý pygame display surface, render sprite, cập nhật di chuyển,
+và screen wrapping cho toàn bộ thực thể trong game.
+
+[Class: Stage]
+Quản lý hiển thị và cập nhật toàn bộ sprite trên màn hình.
+
+Sở hữu pygame display surface và danh sách sprite chính. Xử lý
+render, cập nhật di chuyển, và screen wrapping dạng toroidal.
+
+Attributes:
+    screen: Pygame display surface.
+    spriteList: Danh sách toàn bộ sprite đang hoạt động.
+    width: Độ phân giải ngang tính bằng pixel.
+    height: Độ phân giải dọc tính bằng pixel.
+    showBoundingBoxes: Cờ debug hiển thị viền AABB.
+
+[Stage.__init__()]
+Khởi tạo display và hệ thống quản lý sprite.
+
+Args:
+    caption: Tiêu đề cửa sổ.
+    dimensions: Độ phân giải dạng (width, height). Mặc định dùng
+        độ phân giải gốc của màn hình chính.
+
+[Stage.addSprite()]
+Đăng ký sprite để render và gán bounding rect ban đầu.
+
+Args:
+    sprite: Instance VectorSprite cần thêm.
+
+[Stage.removeSprite()]
+Gỡ sprite khỏi danh sách render.
+
+Args:
+    sprite: Instance VectorSprite cần gỡ.
+
+[Stage.drawSprites()]
+Render toàn bộ sprite đã đăng ký, tùy chọn vẽ bounding box.
+
+[Stage.moveSprites()]
+Cập nhật vị trí toàn bộ sprite và áp dụng screen wrapping.
+
+============================================================
+File: soundManager.py
+============================================================
+
+[Module]
+Module quản lý âm thanh cho game Asteroids.
+
+Cung cấp các hàm nạp, phát, dừng, và tắt tiếng (mute)
+toàn bộ hiệu ứng âm thanh thông qua pygame.mixer.
+
+[initSoundManager()]
+Khởi tạo mixer và nạp toàn bộ file âm thanh từ đĩa.
+
+[toggleMute()]
+Bật/tắt trạng thái mute toàn cục.
+
+Khi chuyển sang mute, tất cả âm thanh đang phát sẽ bị dừng ngay.
+
+[playSound()]
+Phát một hiệu ứng âm thanh một lần.
+
+Args:
+    soundName: Khóa định danh âm thanh trong dictionary sounds.
+
+[playSoundContinuous()]
+Phát một hiệu ứng âm thanh lặp liên tục.
+
+Args:
+    soundName: Khóa định danh âm thanh trong dictionary sounds.
+
+[stopSound()]
+Dừng một hiệu ứng âm thanh đang phát.
+
+Args:
+    soundName: Khóa định danh âm thanh trong dictionary sounds.
+
+============================================================
+File: enemies.py
+============================================================
+
+[Module]
+Các thực thể địch: thiên thạch, hạt hiệu ứng, và AI đĩa bay.
+
+Cung cấp lớp Rock cho thiên thạch với ba cấp kích thước,
+Debris cho hiệu ứng hạt khi phá hủy, và Saucer cho tàu địch
+với ba cấp độ khó sử dụng AI pathfinding.
+
+[Class: Rock]
+Thiên thạch với hình dạng, kích thước, và vận tốc ngẫu nhiên.
+
+Thiên thạch có ba cấp kích thước (lớn, vừa, nhỏ) với hệ số
+vận tốc và tỷ lệ tương ứng. Mỗi thiên thạch xoay chậm và sử dụng
+một trong bốn dạng đa giác định sẵn.
+
+Attributes:
+    rockType: Chỉ số cấp kích thước (0=lớn, 1=vừa, 2=nhỏ).
+    rockShape: Bộ đếm class-level xoay vòng qua các biến thể đa giác.
+    velocities: Vận tốc tối đa theo từng cấp.
+    scales: Hệ số co giãn đa giác theo từng cấp.
+
+[Rock.__init__()]
+Khởi tạo thiên thạch với hướng bay ngẫu nhiên.
+
+Args:
+    stage: Instance Stage quản lý sprite.
+    position: Vị trí spawn, dạng Vector2d.
+    rockType: Chỉ số cấp kích thước (0=lớn, 1=vừa, 2=nhỏ).
+
+[Rock.createPointList()]
+Tạo danh sách đỉnh đa giác cho biến thể hình dạng hiện tại.
+
+Xoay vòng qua bốn dạng đa giác định sẵn để tạo sự
+đa dạng hình ảnh giữa các thiên thạch.
+
+Returns:
+    Danh sách tuple (x, y) xác định các đỉnh đa giác.
+
+[Rock.move()]
+Cập nhật vị trí và áp dụng xoay đều.
+
+[Class: Debris]
+Hạt hiệu ứng ngắn hạn sinh ra khi thực thể bị phá hủy.
+
+Kế thừa màu từ thực thể bị phá hủy và mờ dần theo thời gian
+bằng cách giảm giá trị RGB mỗi frame.
+
+Attributes:
+    ttl: Số frame còn lại (mặc định 50).
+
+[Debris.__init__()]
+Khởi tạo hạt debris với vận tốc trôi ngẫu nhiên.
+
+Args:
+    position: Vị trí spawn, dạng Vector2d.
+    stage: Instance Stage quản lý sprite.
+
+[Debris.move()]
+Cập nhật vị trí và làm mờ dần màu về đen.
+
+[Class: Saucer]
+Tàu địch với ba cấp độ khó.
+
+- Lớn (type 0): Di chuyển dích dắc đơn giản, không dùng pathfinding.
+- Vừa (type 1): Dùng BFS pathfinding để né chướng ngại vật.
+- Khó (type 2): Dùng A* pathfinding để tối ưu tránh chướng ngại vật.
+
+Cả ba cấp đều ngắm và bắn vào tàu người chơi. Khi người chơi
+bị phá hủy, đĩa bay chuyển về di chuyển ngang đơn giản và
+ngừng bắn cho đến khi thoát khỏi màn hình.
+
+Attributes:
+    saucerType: Chỉ số cấp độ khó (0=lớn, 1=vừa, 2=khó).
+    ship: Tham chiếu đến Ship người chơi để ngắm bắn.
+    scoreValue: Điểm thưởng khi bị tiêu diệt.
+    laps: Số lần đã đi qua rìa màn hình (wrap-around).
+    lastx: Tọa độ x frame trước để phát hiện wrap.
+    pathfinder: Instance GridPathfinder để tránh chướng ngại vật.
+    fire_cooldown: Số frame còn lại trước khi được bắn tiếp.
+
+[Saucer.__init__()]
+Khởi tạo đĩa bay với cấu hình theo cấp độ khó.
+
+Args:
+    stage: Instance Stage quản lý sprite.
+    saucerType: Chỉ số cấp độ khó (0=lớn, 1=vừa, 2=khó).
+    ship: Tham chiếu đến Ship người chơi để ngắm bắn.
+
+[Saucer.move()]
+Cập nhật vị trí theo chiến lược di chuyển tương ứng cấp độ.
+
+Đĩa bay lớn và đĩa bay khi không có mục tiêu sống dùng di chuyển
+dích dắc ngang đơn giản. Đĩa bay vừa và khó dùng BFS và A*
+pathfinding để di chuyển về phía người chơi trong khi tránh
+chướng ngại vật.
+
+[Saucer.fireBullet()]
+Bắn đạn nhắm vào tàu người chơi.
+
+Tuân thủ fire cooldown và giới hạn băng đạn theo cấp độ.
+Đạn kế thừa màu của đĩa bay để phân biệt trực quan.
+
+============================================================
+File: util/geometry.py
+============================================================
+
+[Module]
+Các hàm tiện ích hình học cho bài toán giao điểm đoạn thẳng.
+
+Cung cấp các hàm tính hệ số góc, tung độ gốc, và xác định
+giao điểm giữa hai đoạn thẳng bằng phương pháp giải tích.
+
+[calculateGradient()]
+Tính hệ số góc (gradient) của đường thẳng đi qua hai điểm.
+
+Args:
+    p1: Điểm thứ nhất, dạng tuple (x, y).
+    p2: Điểm thứ hai, dạng tuple (x, y).
+
+Returns:
+    Hệ số góc dạng float, hoặc None nếu đường thẳng đứng.
+
+[calculateYAxisIntersect()]
+Tính tung độ gốc (y-intercept) của đường thẳng.
+
+Args:
+    p: Một điểm trên đường thẳng, dạng tuple (x, y).
+    m: Hệ số góc của đường thẳng.
+
+Returns:
+    Giá trị tung độ gốc (b) dạng float.
+
+[getIntersectPoint()]
+Tìm giao điểm của hai đường thẳng kéo dài vô hạn.
+
+Đường thẳng thứ nhất xác định bởi p1, p2; đường thứ hai bởi p3, p4.
+Xử lý các trường hợp đường thẳng đứng và đường song song.
+
+Args:
+    p1: Điểm đầu đường thẳng 1.
+    p2: Điểm cuối đường thẳng 1.
+    p3: Điểm đầu đường thẳng 2.
+    p4: Điểm cuối đường thẳng 2.
+
+Returns:
+    Tuple chứa tọa độ giao điểm, hoặc None nếu hai đường song song
+    và không trùng nhau.
+
+[calculateIntersectPoint()]
+Kiểm tra giao điểm có nằm trong phạm vi của hai đoạn thẳng hữu hạn.
+
+Mở rộng getIntersectPoint bằng cách xác nhận giao điểm tính được
+nằm trong hình chữ nhật bao (bounding rect) của cả hai đoạn thẳng.
+
+Args:
+    p1: Điểm đầu đoạn thẳng 1.
+    p2: Điểm cuối đoạn thẳng 1.
+    p3: Điểm đầu đoạn thẳng 2.
+    p4: Điểm cuối đoạn thẳng 2.
+
+Returns:
+    Giao điểm dạng list [x, y], hoặc None nếu hai đoạn không giao nhau.
+
+============================================================
+File: util/vectorsprites.py
+============================================================
+
+[Module]
+Các lớp sprite dạng vector và các primitive phát hiện va chạm.
+
+Cung cấp các lớp cơ sở cho mọi thực thể đa giác trong game, bao gồm
+phép xoay, tịnh tiến, di chuyển, co giãn, và phát hiện va chạm bằng
+bounding-rectangle và line-segment intersection.
+
+[Class: VectorSprite]
+Lớp cơ sở cho các sprite đa giác hỗ trợ xoay và tịnh tiến.
+
+Quản lý vị trí, vận tốc, vận tốc góc, và cung cấp các phương thức
+biến đổi đỉnh đa giác, render, di chuyển, và phát hiện va chạm.
+
+Attributes:
+    position: Tọa độ world-space hiện tại, dạng Vector2d.
+    heading: Vector vận tốc, dạng Vector2d.
+    angle: Góc xoay hiện tại tính bằng độ.
+    vAngle: Vận tốc góc (độ/frame).
+    pointlist: Danh sách đỉnh đa giác gốc (tọa độ local-space).
+    color: Tuple màu RGB dùng để render.
+    ttl: Số frame còn lại trước khi tự hủy.
+
+[VectorSprite.__init__()]
+Khởi tạo sprite với vị trí, vận tốc, và hình dạng đa giác.
+
+Args:
+    position: Vị trí world-space ban đầu, dạng Vector2d.
+    heading: Vector vận tốc ban đầu, dạng Vector2d.
+    pointlist: Danh sách tuple (x, y) xác định các đỉnh đa giác.
+    angle: Góc xoay ban đầu tính bằng độ. Mặc định 0.
+    color: Tuple màu RGB. Mặc định trắng (255, 255, 255).
+
+[VectorSprite.rotateAndTransform()]
+Áp dụng phép xoay và tịnh tiến lên toàn bộ đỉnh đa giác.
+
+Lưu kết quả tọa độ screen-space vào ``self.transformedPointlist``.
+
+[VectorSprite.draw()]
+Tính toán các đỉnh đã biến đổi để render.
+
+Returns:
+    Danh sách tọa độ đỉnh trong screen-space.
+
+[VectorSprite.translatePoint()]
+Tịnh tiến một điểm từ local-space sang world-space.
+
+Args:
+    point: Tọa độ local-space dạng (x, y).
+
+Returns:
+    Điểm đã tịnh tiến dạng list [x, y].
+
+[VectorSprite.move()]
+Cập nhật vị trí theo vector vận tốc và cập nhật góc xoay.
+
+[VectorSprite.rotatePoint()]
+Xoay một điểm quanh gốc tọa độ theo góc hiện tại.
+
+Args:
+    point: Tọa độ local-space dạng (x, y).
+
+Returns:
+    Điểm đã xoay dạng list [x, y], làm tròn xuống số nguyên.
+
+[VectorSprite.scale()]
+Co giãn một điểm theo hệ số tỷ lệ đồng nhất.
+
+Args:
+    point: Tọa độ dạng (x, y).
+    scale: Hệ số co giãn.
+
+Returns:
+    Điểm đã co giãn dạng list [x, y], làm tròn xuống số nguyên.
+
+[VectorSprite.collidesWith()]
+Kiểm tra chồng lấn bounding box (AABB) với sprite khác.
+
+Args:
+    target: VectorSprite cần kiểm tra.
+
+Returns:
+    True nếu hai bounding rectangle chồng lấn, False nếu không.
+
+[VectorSprite.checkPolygonCollision()]
+Kiểm tra va chạm đa giác chính xác bằng line-segment intersection.
+
+Duyệt qua tất cả các cặp cạnh giữa sprite này và target
+để tìm điểm giao nhau.
+
+Args:
+    target: VectorSprite cần kiểm tra.
+
+Returns:
+    Điểm giao nhau dạng [x, y] nếu tìm thấy, hoặc None.
+
+[Class: Point]
+Sprite tối giản dạng pixel đơn, dùng cho đạn và hạt hiệu ứng.
+
+Tự động gỡ bỏ khỏi Stage khi hết thời gian sống (ttl).
+
+Attributes:
+    stage: Instance Stage quản lý sprite này.
+    ttl: Số frame còn lại trước khi tự hủy.
+
+[Point.__init__()]
+Khởi tạo Point sprite.
+
+Args:
+    position: Vị trí world-space, dạng Vector2d.
+    heading: Vector vận tốc, dạng Vector2d.
+    stage: Instance Stage quản lý sprite.
+
+[Point.move()]
+Cập nhật vị trí và giảm thời gian sống.
+
+Gỡ sprite khỏi Stage khi ttl về 0.
+
+============================================================
+File: dsa/collision.py
+============================================================
+
+[Module]
+Các chiến lược phát hiện va chạm bằng brute-force và QuadTree.
+
+Cung cấp lớp cơ sở trừu tượng CollisionDetector và hai cài đặt cụ thể:
+BruteForceCollision cho kiểm tra O(n^2) từng cặp, và QuadTreeCollision
+cho phát hiện tối ưu bằng phân vùng không gian.
+
+[Class: CollisionDetector]
+Lớp cơ sở trừu tượng định nghĩa giao diện phát hiện va chạm.
+
+[CollisionDetector.detect_collisions()]
+Phát hiện tất cả va chạm giữa các thực thể.
+
+Args:
+    collidables: Danh sách thực thể va chạm được (thiên thạch).
+    bullets: Danh sách đạn đang hoạt động.
+    player: Instance Ship người chơi, hoặc None.
+    enemy: Instance Saucer tàu địch, hoặc None.
+
+Returns:
+    Set các tuple, mỗi tuple chứa một cặp đối tượng va chạm.
+
+Raises:
+    NotImplementedError: Phải được override bởi lớp con.
+
+[Class: BruteForceCollision]
+Phát hiện va chạm O(n^2) bằng kiểm tra khoảng cách từng cặp.
+
+[BruteForceCollision.detect_collisions()]
+Phát hiện va chạm bằng kiểm tra mọi cặp đối tượng.
+
+Sử dụng lọc sơ bộ bằng bounding-rectangle, sau đó xác nhận
+bằng kiểm tra khoảng cách dựa trên bán kính.
+
+Args:
+    collidables: Danh sách thực thể va chạm được.
+    bullets: Danh sách đạn đang hoạt động.
+    player: Instance Ship người chơi, hoặc None.
+    enemy: Instance Saucer tàu địch, hoặc None.
+
+Returns:
+    Set các tuple chứa cặp đối tượng va chạm.
+
+[Class: QuadTreeCollision]
+Phát hiện va chạm tối ưu bằng QuadTree phân vùng không gian.
+
+[QuadTreeCollision.__init__()]
+Khởi tạo với kích thước màn hình cho boundary QuadTree.
+
+Args:
+    screen_width: Độ phân giải ngang (pixel).
+    screen_height: Độ phân giải dọc (pixel).
+
+[QuadTreeCollision.detect_collisions()]
+Phát hiện va chạm bằng QuadTree phân vùng không gian.
+
+Chèn toàn bộ đối tượng vào QuadTree, sau đó truy vấn
+đối tượng lân cận cho từng thực thể để giảm số lần kiểm tra.
+
+Args:
+    collidables: Danh sách thực thể va chạm được.
+    bullets: Danh sách đạn đang hoạt động.
+    player: Instance Ship người chơi, hoặc None.
+    enemy: Instance Saucer tàu địch, hoặc None.
+
+Returns:
+    Set các tuple chứa cặp đối tượng va chạm, sắp xếp theo
+    id để tránh trùng lặp.
+
+============================================================
+File: dsa/pathfinding.py
+============================================================
+
+[Module]
+Các thuật toán pathfinding trên lưới cho AI tàu địch.
+
+Cung cấp lớp GridPathfinder với cài đặt A* và BFS hoạt động
+trên lưới 2D rời rạc hóa. Lưới được xây dựng động từ vị trí
+chướng ngại vật kèm dự đoán quỹ đạo cho các vật thể di chuyển.
+
+[Class: GridPathfinder]
+Pathfinder trên lưới rời rạc với thuật toán A* và BFS.
+
+Xây dựng lưới chướng ngại vật từ vị trí thiên thạch và đạn
+(bao gồm dự đoán vị trí tương lai), sau đó tìm đường bằng
+A* hoặc BFS. Trả về node khả đạt gần nhất khi không có đường
+đi hoàn chỉnh.
+
+Attributes:
+    width: Chiều rộng world (pixel).
+    height: Chiều cao world (pixel).
+    cell_size: Kích thước ô lưới (pixel).
+    cols: Số cột trong lưới.
+    rows: Số hàng trong lưới.
+
+[GridPathfinder.__init__()]
+Khởi tạo kích thước lưới pathfinder.
+
+Args:
+    width: Chiều rộng world (pixel).
+    height: Chiều cao world (pixel).
+    cell_size: Kích thước ô lưới (pixel). Mặc định 64.
+
+[GridPathfinder.build_grid()]
+Xây dựng lưới chướng ngại vật từ vị trí hiện tại và dự đoán.
+
+Args:
+    rocks: Danh sách instance Rock cần đánh dấu.
+    bullets: Danh sách toàn bộ Bullet đang hoạt động.
+    saucer_bullet_list: Đạn của đĩa bay (loại trừ khỏi đánh dấu).
+
+Returns:
+    Mảng 2D với grid[col][row] = 1 cho ô blocked, 0 cho ô đi được.
+
+[GridPathfinder.get_neighbors()]
+Trả về các ô lân cận đi được theo 8 hướng.
+
+Args:
+    grid: Lưới chướng ngại vật từ build_grid.
+    x: Chỉ số cột ô hiện tại.
+    y: Chỉ số hàng ô hiện tại.
+
+Returns:
+    Danh sách tuple (col, row) các ô lân cận đi được.
+
+[GridPathfinder.astar()]
+Tìm đường bằng A* với heuristic Manhattan distance.
+
+Args:
+    grid: Lưới chướng ngại vật từ build_grid.
+    start_pos: Vị trí bắt đầu, dạng Vector2d (world-space).
+    target_pos: Vị trí mục tiêu, dạng Vector2d (world-space).
+
+Returns:
+    Waypoint tiếp theo dạng Vector2d, hoặc None.
+
+[GridPathfinder.bfs()]
+Tìm đường bằng BFS (breadth-first search).
+
+Args:
+    grid: Lưới chướng ngại vật từ build_grid.
+    start_pos: Vị trí bắt đầu, dạng Vector2d (world-space).
+    target_pos: Vị trí mục tiêu, dạng Vector2d (world-space).
+
+Returns:
+    Waypoint tiếp theo dạng Vector2d, hoặc None.
+
+============================================================
+File: dsa/quadtree.py
+============================================================
+
+[Module]
+QuadTree phân vùng không gian cho phát hiện va chạm.
+
+Cung cấp cấu trúc dữ liệu QuadTree đệ quy chia không gian 2D
+thành các phần tư, cho phép truy vấn va chạm broad-phase O(n log n)
+thay vì brute-force O(n^2).
+
+[Class: QuadTree]
+Chỉ mục không gian đệ quy phân vùng 2D thành bốn phần tư.
+
+Các đối tượng được lưu tại node lá với sức chứa cấu hình được.
+Khi vượt sức chứa, node chia thành bốn con (NE, NW, SE, SW)
+và phân phối đối tượng tương ứng.
+
+Attributes:
+    boundary: pygame.Rect xác định vùng không gian của node.
+    capacity: Số đối tượng tối đa trước khi chia nhỏ.
+    objects: Danh sách sprite lưu tại node này.
+    divided: Node đã được chia nhỏ hay chưa.
+
+[QuadTree.__init__()]
+Khởi tạo node QuadTree với boundary cho trước.
+
+Args:
+    boundary: pygame.Rect xác định vùng không gian.
+    capacity: Số đối tượng tối đa trước khi chia. Mặc định 4.
+
+[QuadTree.subdivide()]
+Chia node thành bốn phần tư bằng nhau (NE, NW, SE, SW).
+
+[QuadTree.insert()]
+Chèn sprite vào cây dựa trên bounding rect.
+
+Nếu node đã đầy, chia nhỏ trước rồi chèn vào phần tư phù hợp.
+
+Args:
+    obj: Sprite có thuộc tính ``rect`` để định vị không gian.
+
+Returns:
+    True nếu chèn thành công, False nếu nằm ngoài boundary.
+
+[QuadTree.query()]
+Truy vấn các đối tượng có bounding rect giao với vùng tìm kiếm.
+
+Tìm kiếm đệ quy các phần tư con giao với hình chữ nhật truy vấn.
+
+Args:
+    range_rect: pygame.Rect xác định vùng tìm kiếm.
+    found: Danh sách đầu ra, đối tượng tìm thấy được append vào.
+
+[QuadTree.get_potential_intersections()]
+Trả về các đối tượng cùng vùng phân vùng với target.
+
+Wrapper tiện ích cho query() sử dụng bounding rect của target.
+
+Args:
+    target: Sprite có thuộc tính ``rect``.
+
+Returns:
+    Danh sách sprite nằm cùng vùng không gian với target.
+
+============================================================
+MÔ TẢ GIẢI THUẬT PATHFINDING (dsa/pathfinding.py)
+============================================================
+
+* Xây dựng Lưới Chướng Ngại Vật (Obstacle Grid) với Dự Đoán Quỹ Đạo:
+Trước khi chạy bất kỳ giải thuật tìm đường nào, hệ thống rời rạc hóa
+toàn bộ không gian màn hình thành một lưới 2D với kích thước ô 64x64 pixel.
+Mỗi ô lưới được đánh dấu là "blocked" (1) hoặc "đi được" (0).
+
+Để đánh dấu chướng ngại vật, hệ thống không chỉ xét vị trí hiện tại
+của thiên thạch và đạn, mà còn ngoại suy quỹ đạo tương lai của chúng
+bằng công thức: vị_trí_dự_đoán = (vị_trí + vận_tốc * t) % kích_thước_màn_hình,
+với t chạy qua nhiều bước thời gian (5, 15, 25, ..., 65 frame cho thiên thạch;
+5, 15, 25, 35 frame cho đạn). Phép modulo (%) đảm bảo xử lý đúng hiện tượng
+screen wrapping (vật thể bay ra rìa phải sẽ xuất hiện ở rìa trái).
+
+Kết quả là một "vệt nguy hiểm" (danger trail) được vẽ dọc theo hướng bay
+của mỗi vật thể, giúp giải thuật tìm đường nhìn thấy trước nguy hiểm
+thay vì chỉ phản ứng với vị trí tức thời. Đạn của chính đĩa bay
+được loại trừ khỏi lưới để tránh tự né đạn mình.
+
+* Giải thuật BFS (Breadth-First Search) cho tàu địch cấp Trung Bình:
+Sử dụng hàng đợi (deque) để duyệt lưới theo chiều rộng, bắt đầu từ
+ô chứa vị trí đĩa bay, mở rộng ra 8 hướng lân cận (ngang, dọc, chéo).
+
+Quy trình hoạt động:
+  1. Chuyển đổi tọa độ pixel của đĩa bay và tàu người chơi sang tọa độ ô lưới.
+  2. Đưa ô bắt đầu vào hàng đợi, đánh dấu đã thăm qua dictionary came_from.
+  3. Lấy ô đầu hàng đợi ra, duyệt 8 ô lân cận chưa thăm và có giá trị 0
+     (đi được), đưa vào cuối hàng đợi.
+  4. Ghi nhận ô gần mục tiêu nhất (theo Manhattan distance) trong suốt
+     quá trình duyệt.
+  5. Khi đến ô mục tiêu hoặc hết ô để duyệt, truy ngược came_from
+     từ ô đích (hoặc ô gần nhất) về ô bắt đầu để dựng đường đi.
+  6. Trả về tọa độ pixel tâm của ô đầu tiên trên đường đi làm waypoint
+     di chuyển tiếp theo.
+
+Nếu mục tiêu bị bao vây hoàn toàn bởi chướng ngại vật (không tồn tại
+đường đi hoàn chỉnh), giải thuật trả về bước đi hướng về ô khả đạt
+gần mục tiêu nhất thay vì trả về None và đứng im.
+
+BFS đảm bảo tìm được đường đi ngắn nhất (tính theo số ô) vì duyệt
+theo từng lớp khoảng cách. Tuy nhiên, BFS không xét trọng số ô nên
+không phân biệt được ô "an toàn hơn" hay "nguy hiểm hơn".
+
+Độ phức tạp: O(V + E) với V = số ô trong lưới, E = số cạnh lân cận.
+
+* Giải thuật A* (A-Star) cho tàu địch cấp Khó:
+Sử dụng hàng đợi ưu tiên (min-heap qua heapq) để duyệt lưới theo
+chi phí tối ưu, kết hợp chi phí thực (g_score) và ước lượng heuristic
+(Manhattan distance đến mục tiêu).
+
+Quy trình hoạt động:
+  1. Chuyển đổi tọa độ pixel sang tọa độ ô lưới (tương tự BFS).
+  2. Đưa ô bắt đầu vào min-heap với f_score = 0, khởi tạo g_score = 0.
+  3. Lấy ô có f_score nhỏ nhất từ heap. Với mỗi ô lân cận đi được,
+     tính g_score tạm = g_score hiện tại + 1.
+  4. Nếu g_score tạm tốt hơn g_score đã biết của ô lân cận (hoặc ô
+     chưa được thăm), cập nhật came_from, g_score, và đẩy vào heap
+     với f_score = g_score + heuristic (Manhattan distance đến đích).
+  5. Ghi nhận ô gần mục tiêu nhất trong suốt quá trình duyệt (cơ chế
+     fallback giống BFS).
+  6. Khi đến ô mục tiêu hoặc hết ô, truy ngược came_from để dựng
+     đường đi và trả về waypoint tiếp theo.
+
+So với BFS, A* ưu tiên mở rộng các ô có triển vọng cao hơn (gần đích
+hơn) nhờ heuristic, giúp giảm đáng kể số ô cần duyệt trên lưới lớn.
+Với heuristic Manhattan distance (admissible và consistent), A* đảm bảo
+tìm được đường đi tối ưu.
+
+Độ phức tạp: O(E * log V) với V = số ô, E = số cạnh, do thao tác
+heap push/pop mỗi lần tốn O(log V).
+
+* So sánh BFS và A* trong ngữ cảnh game:
+  - BFS (tàu Trung Bình): Duyệt đều theo mọi hướng, phản ứng chậm hơn
+    trên lưới lớn nhưng đảm bảo tìm đường ngắn nhất. Phù hợp cho AI
+    cấp trung bình vì hành vi di chuyển ít "thông minh" hơn.
+  - A* (tàu Khó): Ưu tiên duyệt về phía mục tiêu, tìm đường nhanh hơn
+    và hiệu quả hơn. Tạo hành vi truy đuổi quyết liệt hơn, phù hợp
+    cho AI cấp khó.
+  - Cả hai đều sử dụng chung lưới chướng ngại vật với dự đoán quỹ đạo,
+    nên cả hai đều có khả năng "nhìn trước" để né thiên thạch và đạn
+    đang bay tới.

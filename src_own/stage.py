@@ -1,20 +1,8 @@
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-#    Copyright (C) 2008  Nick Redshaw
-#    Copyright (C) 2018  Francisco Sanchez Arroyo
-#
+"""Module quản lý Stage cho game Asteroids.
+
+Xử lý pygame display surface, render sprite, cập nhật di chuyển,
+và screen wrapping cho toàn bộ thực thể trong game.
+"""
 
 import pygame
 import sys
@@ -23,21 +11,35 @@ from pygame.locals import *
 
 
 class Stage:
+    """Quản lý hiển thị và cập nhật toàn bộ sprite trên màn hình.
 
-    # Set up the PyGame surface
-    """Quản lí Cửa sổ (Window), đảm nhận Cập nhật hiển thị (View) hình ảnh trong Pygame."""
+    Sở hữu pygame display surface và danh sách sprite chính. Xử lý
+    render, cập nhật di chuyển, và screen wrapping dạng toroidal.
+
+    Attributes:
+        screen: Pygame display surface.
+        spriteList: Danh sách toàn bộ sprite đang hoạt động.
+        width: Độ phân giải ngang tính bằng pixel.
+        height: Độ phân giải dọc tính bằng pixel.
+        showBoundingBoxes: Cờ debug hiển thị viền AABB.
+    """
+
     def __init__(self, caption, dimensions=None):
-        """Hàm khởi tạo thiết lập các thuộc tính ban đầu cho đối tượng."""
+        """Khởi tạo display và hệ thống quản lý sprite.
+
+        Args:
+            caption: Tiêu đề cửa sổ.
+            dimensions: Độ phân giải dạng (width, height). Mặc định dùng
+                độ phân giải gốc của màn hình chính.
+        """
         pygame.init()
 
-        # If no screen size is provided pick the first available mode
         if dimensions == None:
             dimensions = pygame.display.list_modes()[0]
 
         pygame.display.set_mode(dimensions, FULLSCREEN)
         pygame.mouse.set_visible(False)
 
-        # pygame.display.set_mode(dimensions)
 
         pygame.display.set_caption(caption)
         self.screen = pygame.display.get_surface()
@@ -46,19 +48,26 @@ class Stage:
         self.height = dimensions[1]
         self.showBoundingBoxes = False
 
-    # Add sprite to list then draw it as a easy way to get the bounding rect
     def addSprite(self, sprite):
-        """Đưa đối tượng mới vào danh sách cần theo dõi hình họa."""
+        """Đăng ký sprite để render và gán bounding rect ban đầu.
+
+        Args:
+            sprite: Instance VectorSprite cần thêm.
+        """
         self.spriteList.append(sprite)
         sprite.rect = pygame.draw.aalines(
             self.screen, sprite.color, True, sprite.draw())
 
     def removeSprite(self, sprite):
-        """Gỡ đối tượng khỏi màn hình (vô hình)."""
+        """Gỡ sprite khỏi danh sách render.
+
+        Args:
+            sprite: Instance VectorSprite cần gỡ.
+        """
         self.spriteList.remove(sprite)
 
     def drawSprites(self):
-        """Vẽ lại toàn bộ thực thể được theo dõi bao gồm cả bounding box."""
+        """Render toàn bộ sprite đã đăng ký, tùy chọn vẽ bounding box."""
         for sprite in self.spriteList:
             sprite.rect = pygame.draw.aalines(
                 self.screen, sprite.color, True, sprite.draw())
@@ -67,7 +76,7 @@ class Stage:
                                  sprite.rect, 1)
 
     def moveSprites(self):
-        """Xử lý định luật di chuyển (Vector Move) và vòng lặp màn hình (Screen Wrapping)."""
+        """Cập nhật vị trí toàn bộ sprite và áp dụng screen wrapping."""
         for sprite in self.spriteList:
             sprite.move()
 

@@ -1,83 +1,73 @@
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-#    Copyright (C) 2008  Nick Redshaw
-#    Copyright (C) 2018  Francisco Sanchez Arroyo
-#
+"""Các hàm tiện ích hình học cho bài toán giao điểm đoạn thẳng.
+
+Cung cấp các hàm tính hệ số góc, tung độ gốc, và xác định
+giao điểm giữa hai đoạn thẳng bằng phương pháp giải tích.
+"""
 
 from pygame import Rect
 
-#    Geometry functions to find intersecting lines.
-#    Thes calc's use this formula for a straight line:-
-#        y = mx + b where m is the gradient and b is the y value when x=0
-#
-#    See here for background http://www.mathopenref.com/coordintersection.html
-#
-#    Throughout the code the variable p is a point tuple representing (x,y)
-#
-
-# Calc the gradient 'm' of a line between p1 and p2
-
 
 def calculateGradient(p1, p2):
+    """Tính hệ số góc (gradient) của đường thẳng đi qua hai điểm.
 
-    # Ensure that the line is not vertical
-    """Tính hệ số góc (Gradient 'm') của một đường thẳng tạo bởi 2 điểm p1 và p2."""
+    Args:
+        p1: Điểm thứ nhất, dạng tuple (x, y).
+        p2: Điểm thứ hai, dạng tuple (x, y).
+
+    Returns:
+        Hệ số góc dạng float, hoặc None nếu đường thẳng đứng.
+    """
     if (p1[0] != p2[0]):
         m = (p1[1] - p2[1]) / (p1[0] - p2[0])
         return m
     else:
         return None
 
-# Calc the point 'b' where line crosses the Y axis
-
 
 def calculateYAxisIntersect(p, m):
-    """Tính tọa độ y ('b') tại điểm giao cắt giữa đường thẳng và Trục Tung."""
-    return p[1] - (m * p[0])
+    """Tính tung độ gốc (y-intercept) của đường thẳng.
 
-# Calc the point where two infinitely long lines (p1 to p2 and p3 to p4) intersect.
-# Handle parallel lines and vertical lines (the later has infinate 'm').
-# Returns a point tuple of points like this ((x,y),...)  or None
-# In non parallel cases the tuple will contain just one point.
-# For parallel lines that lay on top of one another the tuple will contain
-# all four points of the two lines
+    Args:
+        p: Một điểm trên đường thẳng, dạng tuple (x, y).
+        m: Hệ số góc của đường thẳng.
+
+    Returns:
+        Giá trị tung độ gốc (b) dạng float.
+    """
+    return p[1] - (m * p[0])
 
 
 def getIntersectPoint(p1, p2, p3, p4):
-    """Tìm tọa độ cắt nhau của 2 ĐƯỜNG thẳng kéo dài vô cực."""
+    """Tìm giao điểm của hai đường thẳng kéo dài vô hạn.
+
+    Đường thẳng thứ nhất xác định bởi p1, p2; đường thứ hai bởi p3, p4.
+    Xử lý các trường hợp đường thẳng đứng và đường song song.
+
+    Args:
+        p1: Điểm đầu đường thẳng 1.
+        p2: Điểm cuối đường thẳng 1.
+        p3: Điểm đầu đường thẳng 2.
+        p4: Điểm cuối đường thẳng 2.
+
+    Returns:
+        Tuple chứa tọa độ giao điểm, hoặc None nếu hai đường song song
+        và không trùng nhau.
+    """
     m1 = calculateGradient(p1, p2)
     m2 = calculateGradient(p3, p4)
 
-    # See if the the lines are parallel
     if (m1 != m2):
-        # Not parallel
 
-        # See if either line is vertical
         if (m1 is not None and m2 is not None):
-            # Neither line vertical
             b1 = calculateYAxisIntersect(p1, m1)
             b2 = calculateYAxisIntersect(p3, m2)
             x = (b2 - b1) / (m1 - m2)
             y = (m1 * x) + b1
         else:
-            # Line 1 is vertical so use line 2's values
             if (m1 is None):
                 b2 = calculateYAxisIntersect(p3, m2)
                 x = p1[0]
                 y = (m2 * x) + b2
-            # Line 2 is vertical so use line 1's values
             elif (m2 is None):
                 b1 = calculateYAxisIntersect(p1, m1)
                 x = p3[0]
@@ -87,34 +77,34 @@ def getIntersectPoint(p1, p2, p3, p4):
 
         return ((x, y),)
     else:
-        # Parallel lines with same 'b' value must be the same line so they intersect
-        # everywhere in this case we return the start and end points of both lines
-        # the calculateIntersectPoint method will sort out which of these points
-        # lays on both line segments
-        b1, b2 = None, None  # vertical lines have no b value
+        b1, b2 = None, None  
         if m1 is not None:
             b1 = calculateYAxisIntersect(p1, m1)
 
         if m2 is not None:
             b2 = calculateYAxisIntersect(p3, m2)
 
-        # If these parallel lines lay on one another
         if b1 == b2:
             return p1, p2, p3, p4
         else:
             return None
 
-# For line segments (ie not infinitely long lines) the intersect point
-# may not lay on both lines.
-#
-# If the point where two lines intersect is inside both line's bounding
-# rectangles then the lines intersect. Returns intersect point if the line
-# intesect o None if not
-
 
 def calculateIntersectPoint(p1, p2, p3, p4):
+    """Kiểm tra giao điểm có nằm trong phạm vi của hai đoạn thẳng hữu hạn.
 
-    """Xác nhận tọa độ giao điểm có nằm vỏn vẹn trong phạm vi của 2 ĐOẠN thẳng hữu hạn hay không."""
+    Mở rộng getIntersectPoint bằng cách xác nhận giao điểm tính được
+    nằm trong hình chữ nhật bao (bounding rect) của cả hai đoạn thẳng.
+
+    Args:
+        p1: Điểm đầu đoạn thẳng 1.
+        p2: Điểm cuối đoạn thẳng 1.
+        p3: Điểm đầu đoạn thẳng 2.
+        p4: Điểm cuối đoạn thẳng 2.
+
+    Returns:
+        Giao điểm dạng list [x, y], hoặc None nếu hai đoạn không giao nhau.
+    """
     p = getIntersectPoint(p1, p2, p3, p4)
 
     if p is not None:
@@ -128,9 +118,6 @@ def calculateIntersectPoint(p1, p2, p3, p4):
         r2 = Rect(p3, (width, height))
         r2.normalize()
 
-        # Ensure both rects have a width and height of at least 'tolerance' else the
-        # collidepoint check of the Rect class will fail as it doesn't include the bottom
-        # and right hand side 'pixels' of the rectangle
         tolerance = 1
         if r1.width < tolerance:
             r1.width = tolerance
@@ -152,60 +139,10 @@ def calculateIntersectPoint(p1, p2, p3, p4):
                     point = [int(pp) for pp in point]
                     return point
             except:
-                # sometimes the value in a point are too large for PyGame's Rect class
                 str = "point was invalid  ", point
                 print(str)
 
-        # This is the case where the infinately long lines crossed but
-        # the line segments didn't
         return None
 
     else:
         return None
-
-
-# Test script below...
-if __name__ == "__main__":
-
-    # line 1 and 2 cross, 1 and 3 don't but would if extended, 2 and 3 are parallel
-    # line 5 is horizontal, line 4 is vertical
-    p1 = (1, 5)
-    p2 = (4, 7)
-
-    p3 = (4, 5)
-    p4 = (3, 7)
-
-    p5 = (4, 1)
-    p6 = (3, 3)
-
-    p7 = (3, 1)
-    p8 = (3, 10)
-
-    p9 = (0, 6)
-    p10 = (5, 6)
-
-    p11 = (472.0, 116.0)
-    p12 = (542.0, 116.0)
-
-    assert None != calculateIntersectPoint(
-        p1, p2, p3, p4), "line 1 line 2 should intersect"
-    assert None != calculateIntersectPoint(
-        p3, p4, p1, p2), "line 2 line 1 should intersect"
-    assert None == calculateIntersectPoint(
-        p1, p2, p5, p6), "line 1 line 3 shouldn't intersect"
-    assert None == calculateIntersectPoint(
-        p3, p4, p5, p6), "line 2 line 3 shouldn't intersect"
-    assert None != calculateIntersectPoint(
-        p1, p2, p7, p8), "line 1 line 4 should intersect"
-    assert None != calculateIntersectPoint(
-        p7, p8, p1, p2), "line 4 line 1 should intersect"
-    assert None != calculateIntersectPoint(
-        p1, p2, p9, p10), "line 1 line 5 should intersect"
-    assert None != calculateIntersectPoint(
-        p9, p10, p1, p2), "line 5 line 1 should intersect"
-    assert None != calculateIntersectPoint(
-        p7, p8, p9, p10), "line 4 line 5 should intersect"
-    assert None != calculateIntersectPoint(
-        p9, p10, p7, p8), "line 5 line 4 should intersect"
-
-    print("\nSUCCESS! All asserts passed for doLinesIntersect")

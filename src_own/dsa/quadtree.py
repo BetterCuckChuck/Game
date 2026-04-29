@@ -1,29 +1,43 @@
+"""QuadTree phân vùng không gian cho phát hiện va chạm.
+
+Cung cấp cấu trúc dữ liệu QuadTree đệ quy chia không gian 2D
+thành các phần tư, cho phép truy vấn va chạm broad-phase O(n log n)
+thay vì brute-force O(n^2).
+"""
+
 import pygame
 
+
 class QuadTree:
-    """
-    Lớp QuadTree sử dụng trong Xử lí va chạm.
-    
+    """Chỉ mục không gian đệ quy phân vùng 2D thành bốn phần tư.
+
+    Các đối tượng được lưu tại node lá với sức chứa cấu hình được.
+    Khi vượt sức chứa, node chia thành bốn con (NE, NW, SE, SW)
+    và phân phối đối tượng tương ứng.
+
     Attributes:
-        objects (list): Danh sách các đối tượng Node quản lý.
-        divided (bool): Cờ đánh dấu Node vượt quá capacity.
-        boundary (pygame.Rect): pygame.Rect quản lý không gian của Node.
-        capacity (int): Số lượng đối tượng tối đa trước khi Cây Tứ Phân thực hiện chia nhỏ.
+        boundary: pygame.Rect xác định vùng không gian của node.
+        capacity: Số đối tượng tối đa trước khi chia nhỏ.
+        objects: Danh sách sprite lưu tại node này.
+        divided: Node đã được chia nhỏ hay chưa.
     """
+
     def __init__(self, boundary, capacity=4):
-        """Hàm khởi tạo thiết lập các thuộc tính ban đầu cho đối tượng."""
+        """Khởi tạo node QuadTree với boundary cho trước.
+
+        Args:
+            boundary: pygame.Rect xác định vùng không gian.
+            capacity: Số đối tượng tối đa trước khi chia. Mặc định 4.
+        """
         self.boundary = boundary
         self.capacity = capacity
         self.objects = []
         self.divided = False
 
-
-
     def subdivide(self):
-        """Phân chia Node hiện tại thành 4 phần: Đông Bắc, Tây Bắc, Đông Nam, Tây Nam."""
+        """Chia node thành bốn phần tư bằng nhau (NE, NW, SE, SW)."""
         x, y, w, h = self.boundary.x, self.boundary.y, self.boundary.w, self.boundary.h
         hw, hh = w / 2, h / 2
-        
         self.northeast = QuadTree(pygame.Rect(x + hw, y, hw, hh), self.capacity)
         self.northwest = QuadTree(pygame.Rect(x, y, hw, hh), self.capacity)
         self.southeast = QuadTree(pygame.Rect(x + hw, y + hh, hw, hh), self.capacity)
@@ -31,40 +45,60 @@ class QuadTree:
         self.divided = True
 
     def insert(self, obj):
-        """Nạp một đối tượng vào Cây Tứ Phân."""
+        """Chèn sprite vào cây dựa trên bounding rect.
+
+        Nếu node đã đầy, chia nhỏ trước rồi chèn vào phần tư phù hợp.
+
+        Args:
+            obj: Sprite có thuộc tính ``rect`` để định vị không gian.
+
+        Returns:
+            True nếu chèn thành công, False nếu nằm ngoài boundary.
+        """
         if not self.boundary.colliderect(obj.rect):
             return False
-
         if len(self.objects) < self.capacity:
             self.objects.append(obj)
             return True
-        
         if not self.divided:
             self.subdivide()
-
-        return (self.northeast.insert(obj) or 
-                self.northwest.insert(obj) or 
-                self.southeast.insert(obj) or 
+        return (self.northeast.insert(obj) or
+                self.northwest.insert(obj) or
+                self.southeast.insert(obj) or
                 self.southwest.insert(obj))
 
     def query(self, range_rect, found):
-        """Truy vấn mảng các đối tượng nằm trong không gian giao cắt với ô range_rect."""
+        """Truy vấn các đối tượng có bounding rect giao với vùng tìm kiếm.
+
+        Tìm kiếm đệ quy các phần tư con giao với hình chữ nhật truy vấn.
+
+        Args:
+            range_rect: pygame.Rect xác định vùng tìm kiếm.
+            found: Danh sách đầu ra, đối tượng tìm thấy được append vào.
+        """
         if not self.boundary.colliderect(range_rect):
             return
-
         for obj in self.objects:
             if range_rect.colliderect(obj.rect):
                 if obj not in found:
                     found.append(obj)
-
         if self.divided:
             self.northeast.query(range_rect, found)
             self.northwest.query(range_rect, found)
             self.southeast.query(range_rect, found)
             self.southwest.query(range_rect, found)
-            
+
     def get_potential_intersections(self, target):
-        """Trích xuất những phần tử lân cận nằm chung khu vực phân vùng (Tối ưu tìm kiếm)."""
+        """Trả về các đối tượng cùng vùng phân vùng với target.
+
+        Wrapper tiện ích cho query() sử dụng bounding rect của target.
+
+        Args:
+            target: Sprite có thuộc tính ``rect``.
+
+        Returns:
+            Danh sách sprite nằm cùng vùng không gian với target.
+        """
         found = []
         self.query(target.rect, found)
         return found

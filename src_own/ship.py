@@ -1,20 +1,9 @@
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-#    Copyright (C) 2008  Nick Redshaw
-#    Copyright (C) 2018  Francisco Sanchez Arroyo
-#
+"""Tàu người chơi và hiệu ứng lửa động cơ.
+
+Cung cấp lớp Ship cho tàu vũ trụ do người chơi điều khiển với
+hệ thống đẩy, xoay, hyperspace, và vũ khí, cùng lớp ThrustJet
+cho hiệu ứng khí xả động cơ.
+"""
 
 import random
 from util.vectorsprites import *
@@ -24,19 +13,19 @@ from soundManager import *
 
 
 class Ship(Shooter):
+    """Tàu vũ trụ do người chơi điều khiển với hệ thống đẩy, xoay, và vũ khí.
 
-    # Class attributes
-    """
-    Lớp Quản lý tàu người chơi điều khiển.
-    
+    Xử lý gia tốc, giảm tốc, xoay, dịch chuyển hyperspace,
+    bắn đạn, và hiệu ứng phá hủy.
+
     Attributes:
-        acceleration (float): Lực giật đẩy chân ga.
-        decelaration (float): Lực ma sát làm tàu chậm dần.
-        maxVelocity (int): Tốc độ di chuyển tối đa cho phép.
-        thrustJet (ThrustJet): Đối tượng tia lửa phụt ra dưới đuôi tàu.
-        shipDebrisList (list): Lưu các mảnh vụn khi tàu nổ tung.
-        visible (bool): Trạng thái hiển thị hay tàng hình (khi đang hồi sinh).
-        inHyperSpace (bool): Cờ trạng thái nhảy không gian (miễn nhiễm sát thương).
+        acceleration: Lực đẩy áp dụng mỗi frame.
+        decelaration: Hệ số ma sát áp dụng mỗi frame.
+        maxVelocity: Giới hạn tốc độ tối đa.
+        thrustJet: Instance ThrustJet cho hiệu ứng khí xả.
+        shipDebrisList: Danh sách mảnh vụn khi tàu bị phá hủy.
+        visible: Tàu có đang được render hay không.
+        inHyperSpace: Tàu có đang trong trạng thái hyperspace (bất tử) hay không.
     """
     acceleration = 0.2
     decelaration = -0.005
@@ -47,8 +36,11 @@ class Ship(Shooter):
     bulletTtl = 35
 
     def __init__(self, stage):
+        """Khởi tạo tàu tại tâm màn hình với cấu hình mặc định.
 
-        """Hàm khởi tạo thiết lập các thuộc tính ban đầu cho đối tượng."""
+        Args:
+            stage: Instance Stage quản lý sprite.
+        """
         position = Vector2d(stage.width/2, stage.height/2)
         heading = Vector2d(0, 0)
         self.thrustJet = ThrustJet(stage, self)
@@ -58,9 +50,14 @@ class Ship(Shooter):
         pointlist = [(0, -10), (6, 10), (3, 7), (-3, 7), (-6, 10)]
 
         Shooter.__init__(self, position, heading, pointlist, stage)
+        self.color = (50, 255, 50)
 
     def draw(self):
-        """In điểm ảnh lên Screen Frame."""
+        """Render tàu, xử lý chuyển tiếp khi thoát hyperspace.
+
+        Returns:
+            Danh sách các đỉnh đa giác đã biến đổi.
+        """
         if self.visible:
             if not self.inHyperSpace:
                 VectorSprite.draw(self)
@@ -68,8 +65,8 @@ class Ship(Shooter):
                 self.hyperSpaceTtl -= 1
                 if self.hyperSpaceTtl == 0:
                     self.inHyperSpace = False
-                    self.color = (255, 255, 255)
-                    self.thrustJet.color = (255, 255, 255)
+                    self.color = (50, 255, 50)
+                    self.thrustJet.color = (255, 50, 50)
                     self.position.x = random.randrange(0, self.stage.width)
                     self.position.y = random.randrange(0, self.stage.height)
                     position = Vector2d(self.position.x, self.position.y)
@@ -78,17 +75,20 @@ class Ship(Shooter):
         return self.transformedPointlist
 
     def rotateLeft(self):
-        """Quay tàu sang Trái góc xoay."""
+        """Xoay tàu ngược chiều kim đồng hồ một góc turnAngle."""
         self.angle += self.turnAngle
         self.thrustJet.angle += self.turnAngle
 
     def rotateRight(self):
-        """Quay tàu sang Phải."""
+        """Xoay tàu theo chiều kim đồng hồ một góc turnAngle."""
         self.angle -= self.turnAngle
         self.thrustJet.angle -= self.turnAngle
 
     def increaseThrust(self):
-        """Thúc đẩy động cơ bằng cách cộng vận tốc dựa trên góc nghiêng lượng giác."""
+        """Áp dụng lực đẩy theo hướng mũi tàu hiện tại.
+
+        Lực đẩy bị giới hạn tại maxVelocity. Phát âm thanh thrust.
+        """
         playSoundContinuous("thrust")
         if math.hypot(self.heading.x, self.heading.y) > self.maxVelocity:
             return
@@ -98,7 +98,10 @@ class Ship(Shooter):
         self.changeVelocity(dx, dy)
 
     def decreaseThrust(self):
-        """Ma sát trong không gian, làm động cơ chậm lại đều đều (Deceleration)."""
+        """Áp dụng ma sát để giảm dần vận tốc.
+
+        Dừng âm thanh thrust khi được gọi.
+        """
         stopSound("thrust")
         if (self.heading.x == 0 and self.heading.y == 0):
             return
@@ -108,21 +111,24 @@ class Ship(Shooter):
         self.changeVelocity(dx, dy)
 
     def changeVelocity(self, dx, dy):
-        """Tác động trực tiếp vào Vector Vận tốc (dx, dy)."""
+        """Thay đổi vận tốc của cả tàu và thrust jet.
+
+        Args:
+            dx: Lượng thay đổi vận tốc theo trục ngang.
+            dy: Lượng thay đổi vận tốc theo trục dọc.
+        """
         self.heading.x += dx
         self.heading.y += dy
         self.thrustJet.heading.x += dx
         self.thrustJet.heading.y += dy
 
     def move(self):
-        """Đẩy toạ độ x,y về phía trước dựa theo gia tốc vận tốc."""
+        """Cập nhật vị trí và áp dụng ma sát giảm tốc."""
         VectorSprite.move(self)
         self.decreaseThrust()
 
-    # Break the shape of the ship down into several lines
-    # Ship shape - [(0, -10), (6, 10), (3, 7), (-3, 7), (-6, 10)]
     def explode(self):
-        """Làm Tàu nổ tung (sinh ra hàm ngàn Debris Point)."""
+        """Phân rã tàu thành các mảnh vụn riêng lẻ theo từng cạnh."""
         pointlist = [(0, -10), (6, 10)]
         self.addShipDebris(pointlist)
         pointlist = [(6, 10), (3, 7)]
@@ -134,32 +140,38 @@ class Ship(Shooter):
         pointlist = [(-6, 10), (0, -10)]
         self.addShipDebris(pointlist)
 
-    # Create a peice of ship debris
 
     def addShipDebris(self, pointlist):
-        """Thêm hiệu ứng tan vỡ Mạn tàu vào Array Màn hình."""
+        """Tạo một mảnh vụn từ một cạnh của tàu.
+
+        Mảnh vụn kế thừa màu của tàu và trôi ra xa tâm tàu
+        với vận tốc ngẫu nhiên.
+
+        Args:
+            pointlist: Danh sách hai điểm xác định cạnh.
+        """
         heading = Vector2d(0, 0)
         position = Vector2d(self.position.x, self.position.y)
         debris = VectorSprite(position, heading, pointlist, self.angle)
+        debris.color = (50, 255, 50)
 
-        # Add debris to the stage
         self.stage.addSprite(debris)
 
-        # Calc a velocity moving away from the ship's center
         centerX = debris.rect.centerx
         centerY = debris.rect.centery
 
-        # Alter the random values below to change the rate of expansion
         debris.heading.x = ((centerX - self.position.x) +
                             0.1) / random.uniform(20, 40)
         debris.heading.y = ((centerY - self.position.y) +
                             0.1) / random.uniform(20, 40)
         self.shipDebrisList.append(debris)
 
-    # Set the bullet velocity and create the bullet
 
     def fireBullet(self):
-        """Bắn viên đạn (Bullet) về hướng mũi tàu hiện tại."""
+        """Bắn đạn theo hướng mũi tàu hiện tại.
+
+        Không bắn được khi đang trong trạng thái hyperspace.
+        """
         if self.inHyperSpace == False:
             vx = self.bulletVelocity * math.sin(radians(self.angle)) * -1
             vy = self.bulletVelocity * math.cos(radians(self.angle)) * -1
@@ -168,9 +180,12 @@ class Ship(Shooter):
                                self.bulletVelocity)
             playSound("fire")
 
-    #
     def enterHyperSpace(self):
-        """Kích hoạt Cơ chế Nhảy Không Gian Ngẫu Nhiên (Bóng tối vô định)."""
+        """Kích hoạt nhảy hyperspace, ẩn tàu và bật trạng thái bất tử.
+
+        Tàu xuất hiện lại tại vị trí ngẫu nhiên sau khi hết thời gian
+        hyperspace.
+        """
         if not self.inHyperSpace:
             self.inHyperSpace = True
             self.hyperSpaceTtl = 100
@@ -178,19 +193,25 @@ class Ship(Shooter):
             self.thrustJet.color = (0, 0, 0)
 
 
-# Exhaust jet when ship is accelerating
 class ThrustJet(VectorSprite):
-    """
-    Lớp Quản lý ngọn lửa sau đuôi tàu khi tăng tốc tàu.
-    
+    """Hiệu ứng khí xả động cơ gắn liền với tàu người chơi.
+
+    Render ngọn lửa tam giác phía sau tàu khi đang đẩy.
+    Ẩn đi khi tàu không đẩy hoặc đang trong hyperspace.
+
     Attributes:
-        accelerating (bool): Công tắc đang tăng tốc (sinh lửa) hay giảm tốc.
-        ship (Ship): Chủ thể Tàu vũ trụ mà ngọn lửa gắn vào.
+        accelerating: Động cơ có đang hoạt động hay không.
+        ship: Tham chiếu đến instance Ship gốc.
     """
     pointlist = [(-3, 7), (0, 13), (3, 7)]
 
     def __init__(self, stage, ship):
-        """Hàm khởi tạo thiết lập các thuộc tính ban đầu cho đối tượng."""
+        """Khởi tạo thrust jet gắn với tàu.
+
+        Args:
+            stage: Instance Stage quản lý sprite.
+            ship: Instance Ship gốc.
+        """
         position = Vector2d(stage.width/2, stage.height/2)
         heading = Vector2d(0, 0)
         self.accelerating = False
@@ -198,9 +219,13 @@ class ThrustJet(VectorSprite):
         VectorSprite.__init__(self, position, heading, self.pointlist)
 
     def draw(self):
-        """In điểm ảnh lên Screen Frame."""
+        """Render ngọn lửa, bật/tắt hiển thị theo trạng thái động cơ.
+
+        Returns:
+            Danh sách các đỉnh đa giác đã biến đổi.
+        """
         if self.accelerating and self.ship.inHyperSpace == False:
-            self.color = (255, 255, 255)
+            self.color = (255, 50, 50)
         else:
             self.color = (0, 0, 0)
 

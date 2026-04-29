@@ -1,20 +1,8 @@
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-#    Copyright (C) 2008  Nick Redshaw
-#    Copyright (C) 2018  Francisco Sanchez Arroyo
-#
+"""Lớp cơ sở Shooter và lớp đạn Bullet.
+
+Định nghĩa mixin Shooter cho các thực thể có khả năng bắn đạn,
+và lớp Bullet đại diện cho từng viên đạn riêng lẻ.
+"""
 
 import random
 from util.vectorsprites import *
@@ -22,22 +10,40 @@ from util import *
 
 
 class Shooter(VectorSprite):
+    """Lớp cơ sở trừu tượng cho các thực thể có khả năng bắn đạn.
 
-    """
-    Lớp Kế Thừa trừu tượng đại diện cho bất kì Thực thể nào Biết Cầm Súng bắn Đạn.
-    
+    Quản lý danh sách đạn đang hoạt động và cung cấp các phương thức
+    bắn đạn mới, phát hiện va chạm đạn-mục tiêu.
+
     Attributes:
-        bullets (list): Mảng lưu trữ các viên kích xuất hiện hành.
-        stage (Stage): Đối tượng Màn hình gốc để sinh đạn lên đó.
+        bullets: Danh sách các instance Bullet đang hoạt động.
+        stage: Instance Stage quản lý sprite.
     """
+
     def __init__(self, position, heading, pointlist, stage):
-        """Hàm khởi tạo thiết lập các thuộc tính ban đầu cho đối tượng."""
+        """Khởi tạo Shooter với vị trí và tham chiếu Stage.
+
+        Args:
+            position: Vị trí world-space, dạng Vector2d.
+            heading: Vector vận tốc, dạng Vector2d.
+            pointlist: Danh sách đỉnh đa giác xác định hình dạng.
+            stage: Instance Stage quản lý sprite.
+        """
         VectorSprite.__init__(self, position, heading, pointlist)
         self.bullets = []
         self.stage = stage
 
     def fireBullet(self, heading, ttl, velocity):
-        """Bắn viên đạn (Bullet) về hướng mũi tàu hiện tại."""
+        """Tạo viên đạn mới nếu chưa đạt giới hạn băng đạn.
+
+        Args:
+            heading: Vector vận tốc của đạn, dạng Vector2d.
+            ttl: Thời gian sống tính bằng frame.
+            velocity: Tốc độ vô hướng của đạn.
+
+        Returns:
+            True nếu đạn được tạo thành công, None nếu băng đạn đầy.
+        """
         if (len(self.bullets) < self.maxBullets):
             position = Vector2d(self.position.x, self.position.y)
             newBullet = Bullet(position, heading, self,
@@ -47,7 +53,16 @@ class Shooter(VectorSprite):
             return True
 
     def bulletCollision(self, target):
-        """Kiểm tra Đạn của mình có trúng Vật phẩm phía đối diện hay không."""
+        """Kiểm tra đạn đang hoạt động có trúng mục tiêu không.
+
+        Đạn trúng mục tiêu sẽ bị đặt ttl về 0.
+
+        Args:
+            target: VectorSprite cần kiểm tra va chạm.
+
+        Returns:
+            True nếu ít nhất một viên đạn trúng, False nếu không.
+        """
         collisionDetected = False
         for bullet in self.bullets:
             if bullet.ttl > 0 and target.collidesWith(bullet):
@@ -56,28 +71,39 @@ class Shooter(VectorSprite):
 
         return collisionDetected
 
-# Bullet class
 
 
 class Bullet(Point):
+    """Viên đạn được bắn ra bởi một Shooter.
 
-    """
-    Lớp Bullet đại diện cho đạn.
-    
+    Kế thừa màu từ Shooter đã bắn nó. Tự gỡ khỏi danh sách đạn
+    của Shooter khi hết thời gian sống.
+
     Attributes:
-        shooter (Shooter): Đối tượng bắn đạn.
-        ttl (int): Vòng đời của viên đạn.
-        velocity (float): Tốc độ bay của viên đạn.
+        shooter: Instance Shooter đã bắn viên đạn này.
+        ttl: Số frame còn lại trước khi hết hạn.
+        velocity: Tốc độ vô hướng của đạn.
     """
+
     def __init__(self, position, heading, shooter, ttl, velocity, stage):
-        """Hàm khởi tạo thiết lập các thuộc tính ban đầu cho đối tượng."""
+        """Khởi tạo đạn với quỹ đạo và quyền sở hữu.
+
+        Args:
+            position: Vị trí spawn, dạng Vector2d.
+            heading: Vector vận tốc, dạng Vector2d.
+            shooter: Instance Shooter sở hữu viên đạn.
+            ttl: Thời gian sống tính bằng frame.
+            velocity: Tốc độ vô hướng của đạn.
+            stage: Instance Stage quản lý sprite.
+        """
         Point.__init__(self, position, heading, stage)
         self.shooter = shooter
         self.ttl = ttl
         self.velocity = velocity
+        self.color = shooter.color
 
     def move(self):
-        """Đẩy toạ độ x,y về phía trước dựa theo gia tốc vận tốc."""
+        """Cập nhật vị trí và gỡ khỏi danh sách đạn khi hết hạn."""
         Point.move(self)
         if (self.ttl <= 0):
             self.shooter.bullets.remove(self)

@@ -1,7 +1,10 @@
-"""Module quản lý Stage cho game Asteroids.
+"""
+Module quản lý Stage cho game Asteroids.
 
 Xử lý pygame display surface, render sprite, cập nhật di chuyển,
 và screen wrapping cho toàn bộ thực thể trong game.
+
+Last Modified: 2026-05-06
 """
 
 import pygame
@@ -11,7 +14,8 @@ from pygame.locals import *
 
 
 class Stage:
-    """Quản lý hiển thị và cập nhật toàn bộ sprite trên màn hình.
+    """
+    Quản lý hiển thị và cập nhật toàn bộ sprite trên màn hình.
 
     Sở hữu pygame display surface và danh sách sprite chính. Xử lý
     render, cập nhật di chuyển, và screen wrapping dạng toroidal.
@@ -22,15 +26,20 @@ class Stage:
         width: Độ phân giải ngang tính bằng pixel.
         height: Độ phân giải dọc tính bằng pixel.
         showBoundingBoxes: Cờ debug hiển thị viền AABB.
+
+    Last Modified: 2026-05-06
     """
 
     def __init__(self, caption, dimensions=None):
-        """Khởi tạo display và hệ thống quản lý sprite.
+        """
+        Khởi tạo display và hệ thống quản lý sprite.
 
         Args:
             caption: Tiêu đề cửa sổ.
             dimensions: Độ phân giải dạng (width, height). Mặc định dùng
                 độ phân giải gốc của màn hình chính.
+
+        Last Modified: 2026-05-06
         """
         pygame.init()
 
@@ -49,25 +58,35 @@ class Stage:
         self.showBoundingBoxes = False
 
     def addSprite(self, sprite):
-        """Đăng ký sprite để render và gán bounding rect ban đầu.
+        """
+        Đăng ký sprite để render và gán bounding rect ban đầu.
 
         Args:
             sprite: Instance VectorSprite cần thêm.
+
+        Last Modified: 2026-05-06
         """
         self.spriteList.append(sprite)
         sprite.rect = pygame.draw.aalines(
             self.screen, sprite.color, True, sprite.draw())
 
     def removeSprite(self, sprite):
-        """Gỡ sprite khỏi danh sách render.
+        """
+        Gỡ sprite khỏi danh sách render.
 
         Args:
             sprite: Instance VectorSprite cần gỡ.
+
+        Last Modified: 2026-05-06
         """
         self.spriteList.remove(sprite)
 
     def drawSprites(self):
-        """Render toàn bộ sprite đã đăng ký, tùy chọn vẽ bounding box."""
+        """
+        Render toàn bộ sprite đã đăng ký, tùy chọn vẽ bounding box.
+
+        Last Modified: 2026-05-06
+        """
         for sprite in self.spriteList:
             sprite.rect = pygame.draw.aalines(
                 self.screen, sprite.color, True, sprite.draw())
@@ -76,7 +95,11 @@ class Stage:
                                  sprite.rect, 1)
 
     def moveSprites(self):
-        """Cập nhật vị trí toàn bộ sprite và áp dụng screen wrapping."""
+        """
+        Cập nhật vị trí toàn bộ sprite và áp dụng screen wrapping.
+
+        Last Modified: 2026-05-06
+        """
         for sprite in self.spriteList:
             sprite.move()
 

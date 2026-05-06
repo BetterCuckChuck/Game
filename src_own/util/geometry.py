@@ -1,14 +1,18 @@
-"""Các hàm tiện ích hình học cho bài toán giao điểm đoạn thẳng.
+"""
+Các hàm tiện ích hình học cho bài toán giao điểm đoạn thẳng.
 
 Cung cấp các hàm tính hệ số góc, tung độ gốc, và xác định
 giao điểm giữa hai đoạn thẳng bằng phương pháp giải tích.
+
+Last Modified: 2026-05-06
 """
 
 from pygame import Rect
 
 
 def calculateGradient(p1, p2):
-    """Tính hệ số góc (gradient) của đường thẳng đi qua hai điểm.
+    """
+    Tính hệ số góc (gradient) của đường thẳng đi qua hai điểm.
 
     Args:
         p1: Điểm thứ nhất, dạng tuple (x, y).
@@ -16,6 +20,8 @@ def calculateGradient(p1, p2):
 
     Returns:
         Hệ số góc dạng float, hoặc None nếu đường thẳng đứng.
+
+    Last Modified: 2026-05-06
     """
     if (p1[0] != p2[0]):
         m = (p1[1] - p2[1]) / (p1[0] - p2[0])
@@ -25,7 +31,8 @@ def calculateGradient(p1, p2):
 
 
 def calculateYAxisIntersect(p, m):
-    """Tính tung độ gốc (y-intercept) của đường thẳng.
+    """
+    Tính tung độ gốc (y-intercept) của đường thẳng.
 
     Args:
         p: Một điểm trên đường thẳng, dạng tuple (x, y).
@@ -33,12 +40,15 @@ def calculateYAxisIntersect(p, m):
 
     Returns:
         Giá trị tung độ gốc (b) dạng float.
+
+    Last Modified: 2026-05-06
     """
     return p[1] - (m * p[0])
 
 
 def getIntersectPoint(p1, p2, p3, p4):
-    """Tìm giao điểm của hai đường thẳng kéo dài vô hạn.
+    """
+    Tìm giao điểm của hai đường thẳng kéo dài vô hạn.
 
     Đường thẳng thứ nhất xác định bởi p1, p2; đường thứ hai bởi p3, p4.
     Xử lý các trường hợp đường thẳng đứng và đường song song.
@@ -52,6 +62,8 @@ def getIntersectPoint(p1, p2, p3, p4):
     Returns:
         Tuple chứa tọa độ giao điểm, hoặc None nếu hai đường song song
         và không trùng nhau.
+
+    Last Modified: 2026-05-06
     """
     m1 = calculateGradient(p1, p2)
     m2 = calculateGradient(p3, p4)
@@ -91,7 +103,8 @@ def getIntersectPoint(p1, p2, p3, p4):
 
 
 def calculateIntersectPoint(p1, p2, p3, p4):
-    """Kiểm tra giao điểm có nằm trong phạm vi của hai đoạn thẳng hữu hạn.
+    """
+    Kiểm tra giao điểm có nằm trong phạm vi của hai đoạn thẳng hữu hạn.
 
     Mở rộng getIntersectPoint bằng cách xác nhận giao điểm tính được
     nằm trong hình chữ nhật bao (bounding rect) của cả hai đoạn thẳng.
@@ -104,6 +117,8 @@ def calculateIntersectPoint(p1, p2, p3, p4):
 
     Returns:
         Giao điểm dạng list [x, y], hoặc None nếu hai đoạn không giao nhau.
+
+    Last Modified: 2026-05-06
     """
     p = getIntersectPoint(p1, p2, p3, p4)
 

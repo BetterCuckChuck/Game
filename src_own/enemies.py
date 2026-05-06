@@ -1,8 +1,11 @@
-"""Các thực thể địch: thiên thạch, hạt hiệu ứng, và AI đĩa bay.
+"""
+Các thực thể địch: thiên thạch, hạt hiệu ứng, và AI đĩa bay.
 
-Cung cấp lớp Rock cho thiên thạch với ba cấp kích thước,
+Cung cấp lớp Rock cho thiên thạch với bốn cấp kích thước,
 Debris cho hiệu ứng hạt khi phá hủy, và Saucer cho tàu địch
 với ba cấp độ khó sử dụng AI pathfinding.
+
+Last Modified: 2026-05-06
 """
 
 import random
@@ -12,34 +15,41 @@ from soundManager import *
 from dsa.pathfinding import GridPathfinder
 
 class Rock(VectorSprite):
-    """Thiên thạch với hình dạng, kích thước, và vận tốc ngẫu nhiên.
+    """
+    Thiên thạch với hình dạng, kích thước, và vận tốc ngẫu nhiên.
 
-    Thiên thạch có ba cấp kích thước (lớn, vừa, nhỏ) với hệ số
-    vận tốc và tỷ lệ tương ứng. Mỗi thiên thạch xoay chậm và sử dụng
-    một trong bốn dạng đa giác định sẵn.
+    Thiên thạch có bốn cấp kích thước (lớn, vừa, nhỏ, siêu nhỏ) với hệ số
+    vận tốc và tỷ lệ tương ứng. Thiên thạch siêu nhỏ chỉ bị phá hủy
+    bởi đạn hoặc va chạm với tàu người chơi.
 
     Attributes:
-        rockType: Chỉ số cấp kích thước (0=lớn, 1=vừa, 2=nhỏ).
+        rockType: Chỉ số cấp kích thước (0=lớn, 1=vừa, 2=nhỏ, 3=siêu nhỏ).
         rockShape: Bộ đếm class-level xoay vòng qua các biến thể đa giác.
         velocities: Vận tốc tối đa theo từng cấp.
         scales: Hệ số co giãn đa giác theo từng cấp.
+
+    Last Modified: 2026-05-06
     """
     largeRockType = 0
     mediumRockType = 1
-    smallRockType = 2   
+    smallRockType = 2
+    tinyRockType = 3
     
-    velocities = (2.2, 2.8, 3.4)    
-    scales = (2.5, 1.5, 0.6)
+    velocities = (3.5, 4.0, 5.0, 6.0)    
+    scales = (1.8, 1.2, 0.6, 0.3)
 
     rockShape = 1    
     
     def __init__(self, stage, position, rockType):
-        """Khởi tạo thiên thạch với hướng bay ngẫu nhiên.
+        """
+        Khởi tạo thiên thạch với hướng bay ngẫu nhiên.
 
         Args:
             stage: Instance Stage quản lý sprite.
             position: Vị trí spawn, dạng Vector2d.
-            rockType: Chỉ số cấp kích thước (0=lớn, 1=vừa, 2=nhỏ).
+            rockType: Chỉ số cấp kích thước (0=lớn, 1=vừa, 2=nhỏ, 3=siêu nhỏ).
+
+        Last Modified: 2026-05-06
         """
         scale = Rock.scales[rockType]
         velocity = Rock.velocities[rockType]                
@@ -58,13 +68,16 @@ class Rock(VectorSprite):
                 
     
     def createPointList(self):
-        """Tạo danh sách đỉnh đa giác cho biến thể hình dạng hiện tại.
+        """
+        Tạo danh sách đỉnh đa giác cho biến thể hình dạng hiện tại.
 
         Xoay vòng qua bốn dạng đa giác định sẵn để tạo sự
         đa dạng hình ảnh giữa các thiên thạch.
 
         Returns:
             Danh sách tuple (x, y) xác định các đỉnh đa giác.
+
+        Last Modified: 2026-05-06
         """
         if (Rock.rockShape == 1):
             pointlist = [(-4,-12), (6,-12), (13, -4), (13, 5), (6, 13), (0,13), (0,4),\
@@ -89,35 +102,49 @@ class Rock(VectorSprite):
         return pointlist
     
     def move(self):
-        """Cập nhật vị trí và áp dụng xoay đều."""
+        """
+        Cập nhật vị trí và áp dụng xoay đều.
+
+        Last Modified: 2026-05-06
+        """
         VectorSprite.move(self)                        
         
         self.angle += 1
     
 
 class Debris(Point):    
-    """Hạt hiệu ứng ngắn hạn sinh ra khi thực thể bị phá hủy.
+    """
+    Hạt hiệu ứng ngắn hạn sinh ra khi thực thể bị phá hủy.
 
     Kế thừa màu từ thực thể bị phá hủy và mờ dần theo thời gian
     bằng cách giảm giá trị RGB mỗi frame.
 
     Attributes:
         ttl: Số frame còn lại (mặc định 50).
+
+    Last Modified: 2026-05-06
     """
 
     def __init__(self, position, stage):
-        """Khởi tạo hạt debris với vận tốc trôi ngẫu nhiên.
+        """
+        Khởi tạo hạt debris với vận tốc trôi ngẫu nhiên.
 
         Args:
             position: Vị trí spawn, dạng Vector2d.
             stage: Instance Stage quản lý sprite.
+
+        Last Modified: 2026-05-06
         """
         heading = Vector2d(random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5))
         Point.__init__(self, position, heading, stage)
         self.ttl = 50
     
     def move(self):    
-        """Cập nhật vị trí và làm mờ dần màu về đen."""
+        """
+        Cập nhật vị trí và làm mờ dần màu về đen.
+
+        Last Modified: 2026-05-06
+        """
         Point.move(self)
         r,g,b = self.color
         r = max(0, r - 5)
@@ -127,7 +154,8 @@ class Debris(Point):
         
 
 class Saucer(Shooter):
-    """Tàu địch với ba cấp độ khó.
+    """
+    Tàu địch với ba cấp độ khó.
 
     - Lớn (type 0): Di chuyển dích dắc đơn giản, không dùng pathfinding.
     - Vừa (type 1): Dùng BFS pathfinding để né chướng ngại vật.
@@ -145,28 +173,33 @@ class Saucer(Shooter):
         lastx: Tọa độ x frame trước để phát hiện wrap.
         pathfinder: Instance GridPathfinder để tránh chướng ngại vật.
         fire_cooldown: Số frame còn lại trước khi được bắn tiếp.
+
+    Last Modified: 2026-05-06
     """
     largeSaucerType = 0
     smallSaucerType = 1
     hardSaucerType = 2
 
-    velocities = (1.5, 2.5, 3.5)    
-    scales = (1.8, 1.4, 1.0)
-    scores = (500, 1000, 2000)
+    velocities = (3.5, 4.0, 4.5)    
+    scales = (1.7, 1.5, 1.2)
+    scores = (100, 300, 700)
     colors = [(255, 255, 0), (255, 165, 0), (255, 50, 50)]
     pointlist = [(-9,0), (-3,-3), (-2,-6), (-2,-6), (2,-6), (3,-3), (9,0), (-9,0), (-3,4), (3,4), (9,0)]
-    maxBulletsList = [1, 2, 4]
-    bulletTtl = [60, 90, 120]
-    bulletVelocityList = [4.0, 6.0, 8.0]
-    fire_delays = [60, 45, 30]
+    maxBulletsList = [2, 4, 6]
+    bulletTtl = [100, 140, 180]
+    bulletVelocityList = [5.0, 6.5, 8.5]
+    fire_delays = [30, 25, 25]
     
     def __init__(self, stage, saucerType, ship):                
-        """Khởi tạo đĩa bay với cấu hình theo cấp độ khó.
+        """
+        Khởi tạo đĩa bay với cấu hình theo cấp độ khó.
 
         Args:
             stage: Instance Stage quản lý sprite.
             saucerType: Chỉ số cấp độ khó (0=lớn, 1=vừa, 2=khó).
             ship: Tham chiếu đến Ship người chơi để ngắm bắn.
+
+        Last Modified: 2026-05-06
         """
         position = Vector2d(0.0, random.randrange(0, stage.height))
         heading = Vector2d(self.velocities[saucerType], 0.0)
@@ -181,7 +214,7 @@ class Saucer(Shooter):
             playSoundContinuous("ssaucer")
         self.laps = 0
         self.lastx = 0
-        self.pathfinder = GridPathfinder(stage.width, stage.height, 64)
+        self.pathfinder = GridPathfinder(stage.width, stage.height, 40)
         
         newPointList = [self.scale(point, self.scales[saucerType]) for point in self.pointlist]
         Shooter.__init__(self, position, heading, newPointList, stage)
@@ -190,12 +223,15 @@ class Saucer(Shooter):
         self.fire_cooldown = 0
         
     def move(self):        
-        """Cập nhật vị trí theo chiến lược di chuyển tương ứng cấp độ.
+        """
+        Cập nhật vị trí theo chiến lược di chuyển tương ứng cấp độ.
 
         Đĩa bay lớn và đĩa bay khi không có mục tiêu sống dùng di chuyển
-        dích dắc ngang đơn giản. Đĩa bay vừa và khó dùng BFS và A*
-        pathfinding để di chuyển về phía người chơi trong khi tránh
-        chướng ngại vật.
+        dích dắc ngang đơn giản. Đĩa bay vừa dùng BFS trên lưới nhị phân,
+        đĩa bay khó dùng Weighted A* trên danger heatmap để tìm đường
+        an toàn nhất trong khi tránh chướng ngại vật.
+
+        Last Modified: 2026-05-06
         """
         ship_alive = self.ship is not None and self.ship in self.stage.spriteList and not self.ship.inHyperSpace
         
@@ -219,12 +255,12 @@ class Saucer(Shooter):
                 elif isinstance(sprite, Bullet):
                     bullets.append(sprite)
             
-            grid = self.pathfinder.build_grid(rocks, bullets, self.bullets)
-            
             if self.saucerType == self.smallSaucerType:
+                grid = self.pathfinder.build_grid(rocks, bullets, self.bullets)
                 next_pos = self.pathfinder.bfs(grid, self.position, self.ship.position)
             else:
-                next_pos = self.pathfinder.astar(grid, self.position, self.ship.position)
+                heatmap = self.pathfinder.build_heatmap(rocks, bullets, self.bullets)
+                next_pos = self.pathfinder.weighted_astar(heatmap, self.position, self.ship.position)
                 
             if next_pos:
                 dx = next_pos.x - self.position.x
@@ -241,15 +277,16 @@ class Saucer(Shooter):
         
         if abs(self.lastx - self.position.x) > self.stage.width / 2:
             self.laps += 1
-            if not ship_alive:
-                self.laps = 10  # Force immediate despawn in main.py
         self.lastx = self.position.x
                 
     def fireBullet(self):
-        """Bắn đạn nhắm vào tàu người chơi.
+        """
+        Bắn đạn nhắm vào tàu người chơi.
 
         Tuân thủ fire cooldown và giới hạn băng đạn theo cấp độ.
         Đạn kế thừa màu của đĩa bay để phân biệt trực quan.
+
+        Last Modified: 2026-05-06
         """
         if self.fire_cooldown > 0:
             self.fire_cooldown -= 1

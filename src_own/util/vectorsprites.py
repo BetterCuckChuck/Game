@@ -1,8 +1,11 @@
-"""Các lớp sprite dạng vector và các primitive phát hiện va chạm.
+"""
+Các lớp sprite dạng vector và các primitive phát hiện va chạm.
 
 Cung cấp các lớp cơ sở cho mọi thực thể đa giác trong game, bao gồm
 phép xoay, tịnh tiến, di chuyển, co giãn, và phát hiện va chạm bằng
 bounding-rectangle và line-segment intersection.
+
+Last Modified: 2026-05-06
 """
 
 #    This program is free software: you can redistribute it and/or modify
@@ -27,7 +30,8 @@ from util.geometry import *
 
 
 class VectorSprite:
-    """Lớp cơ sở cho các sprite đa giác hỗ trợ xoay và tịnh tiến.
+    """
+    Lớp cơ sở cho các sprite đa giác hỗ trợ xoay và tịnh tiến.
 
     Quản lý vị trí, vận tốc, vận tốc góc, và cung cấp các phương thức
     biến đổi đỉnh đa giác, render, di chuyển, và phát hiện va chạm.
@@ -40,10 +44,13 @@ class VectorSprite:
         pointlist: Danh sách đỉnh đa giác gốc (tọa độ local-space).
         color: Tuple màu RGB dùng để render.
         ttl: Số frame còn lại trước khi tự hủy.
+
+    Last Modified: 2026-05-06
     """
 
     def __init__(self, position, heading, pointlist, angle=0, color=(255, 255, 255)):
-        """Khởi tạo sprite với vị trí, vận tốc, và hình dạng đa giác.
+        """
+        Khởi tạo sprite với vị trí, vận tốc, và hình dạng đa giác.
 
         Args:
             position: Vị trí world-space ban đầu, dạng Vector2d.
@@ -51,6 +58,8 @@ class VectorSprite:
             pointlist: Danh sách tuple (x, y) xác định các đỉnh đa giác.
             angle: Góc xoay ban đầu tính bằng độ. Mặc định 0.
             color: Tuple màu RGB. Mặc định trắng (255, 255, 255).
+
+        Last Modified: 2026-05-06
         """
         self.position = position
         self.heading = heading
@@ -62,31 +71,40 @@ class VectorSprite:
 
 
     def rotateAndTransform(self):
-        """Áp dụng phép xoay và tịnh tiến lên toàn bộ đỉnh đa giác.
+        """
+        Áp dụng phép xoay và tịnh tiến lên toàn bộ đỉnh đa giác.
 
         Lưu kết quả tọa độ screen-space vào ``self.transformedPointlist``.
+
+        Last Modified: 2026-05-06
         """
         newPointList = [self.rotatePoint(point) for point in self.pointlist]
         self.transformedPointlist = [
             self.translatePoint(point) for point in newPointList]
 
     def draw(self):
-        """Tính toán các đỉnh đã biến đổi để render.
+        """
+        Tính toán các đỉnh đã biến đổi để render.
 
         Returns:
             Danh sách tọa độ đỉnh trong screen-space.
+
+        Last Modified: 2026-05-06
         """
         self.rotateAndTransform()
         return self.transformedPointlist
 
     def translatePoint(self, point):
-        """Tịnh tiến một điểm từ local-space sang world-space.
+        """
+        Tịnh tiến một điểm từ local-space sang world-space.
 
         Args:
             point: Tọa độ local-space dạng (x, y).
 
         Returns:
             Điểm đã tịnh tiến dạng list [x, y].
+
+        Last Modified: 2026-05-06
         """
         newPoint = []
         newPoint.append(point[0] + self.position.x)
@@ -94,20 +112,27 @@ class VectorSprite:
         return newPoint
 
     def move(self):
-        """Cập nhật vị trí theo vector vận tốc và cập nhật góc xoay."""
+        """
+        Cập nhật vị trí theo vector vận tốc và cập nhật góc xoay.
+
+        Last Modified: 2026-05-06
+        """
         self.position.x = self.position.x + self.heading.x
         self.position.y = self.position.y + self.heading.y
         self.angle = self.angle + self.vAngle
 
 
     def rotatePoint(self, point):
-        """Xoay một điểm quanh gốc tọa độ theo góc hiện tại.
+        """
+        Xoay một điểm quanh gốc tọa độ theo góc hiện tại.
 
         Args:
             point: Tọa độ local-space dạng (x, y).
 
         Returns:
             Điểm đã xoay dạng list [x, y], làm tròn xuống số nguyên.
+
+        Last Modified: 2026-05-06
         """
         newPoint = []
         cosVal = math.cos(radians(self.angle))
@@ -119,7 +144,8 @@ class VectorSprite:
         return newPoint
 
     def scale(self, point, scale):
-        """Co giãn một điểm theo hệ số tỷ lệ đồng nhất.
+        """
+        Co giãn một điểm theo hệ số tỷ lệ đồng nhất.
 
         Args:
             point: Tọa độ dạng (x, y).
@@ -127,6 +153,8 @@ class VectorSprite:
 
         Returns:
             Điểm đã co giãn dạng list [x, y], làm tròn xuống số nguyên.
+
+        Last Modified: 2026-05-06
         """
         newPoint = []
         newPoint.append(point[0] * scale)
@@ -135,13 +163,16 @@ class VectorSprite:
         return newPoint
 
     def collidesWith(self, target):
-        """Kiểm tra chồng lấn bounding box (AABB) với sprite khác.
+        """
+        Kiểm tra chồng lấn bounding box (AABB) với sprite khác.
 
         Args:
             target: VectorSprite cần kiểm tra.
 
         Returns:
             True nếu hai bounding rectangle chồng lấn, False nếu không.
+
+        Last Modified: 2026-05-06
         """
         if self.rect.colliderect(target.rect):
             return True
@@ -149,7 +180,8 @@ class VectorSprite:
             return False
 
     def checkPolygonCollision(self, target):
-        """Kiểm tra va chạm đa giác chính xác bằng line-segment intersection.
+        """
+        Kiểm tra va chạm đa giác chính xác bằng line-segment intersection.
 
         Duyệt qua tất cả các cặp cạnh giữa sprite này và target
         để tìm điểm giao nhau.
@@ -159,6 +191,8 @@ class VectorSprite:
 
         Returns:
             Điểm giao nhau dạng [x, y] nếu tìm thấy, hoặc None.
+
+        Last Modified: 2026-05-06
         """
         for i in range(0, len(self.transformedPointlist)):
             for j in range(0, len(target.transformedPointlist)):
@@ -175,32 +209,41 @@ class VectorSprite:
 
 
 class Point(VectorSprite):
-    """Sprite tối giản dạng pixel đơn, dùng cho đạn và hạt hiệu ứng.
+    """
+    Sprite tối giản dạng pixel đơn, dùng cho đạn và hạt hiệu ứng.
 
     Tự động gỡ bỏ khỏi Stage khi hết thời gian sống (ttl).
 
     Attributes:
         stage: Instance Stage quản lý sprite này.
         ttl: Số frame còn lại trước khi tự hủy.
+
+    Last Modified: 2026-05-06
     """
     pointlist = [(0, 0), (1, 1), (1, 0), (0, 1)]
 
     def __init__(self, position, heading, stage):
-        """Khởi tạo Point sprite.
+        """
+        Khởi tạo Point sprite.
 
         Args:
             position: Vị trí world-space, dạng Vector2d.
             heading: Vector vận tốc, dạng Vector2d.
             stage: Instance Stage quản lý sprite.
+
+        Last Modified: 2026-05-06
         """
         VectorSprite.__init__(self, position, heading, self.pointlist)
         self.stage = stage
         self.ttl = 30
 
     def move(self):
-        """Cập nhật vị trí và giảm thời gian sống.
+        """
+        Cập nhật vị trí và giảm thời gian sống.
 
         Gỡ sprite khỏi Stage khi ttl về 0.
+
+        Last Modified: 2026-05-06
         """
         self.ttl -= 1
         if (self.ttl <= 0):

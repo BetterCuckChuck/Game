@@ -5,7 +5,7 @@ Cài đặt lớp Asteroids chứa vòng lặp game chính, máy trạng thái,
 pipeline phát hiện va chạm, hệ thống tính điểm, và quản lý
 vòng đời thực thể.
 
-Last Modified: 2026-05-06
+Last Modified: 2026-05-13
 """
 
 import pygame
@@ -21,8 +21,9 @@ from enemies import *
 from shooter import *
 from soundManager import *
 from dsa.quadtree import QuadTree
-from dsa.collision import CollisionDispatcher
-
+from highscores import load_scores, add_score, get_top_score, qualifies, reset_scores
+from res_path import resource_path
+from config import load_config, show_settings_gui
 
 class Asteroids():
     """
@@ -37,15 +38,16 @@ class Asteroids():
         paused: Game có đang tạm dừng hay không.
         showingFPS: Có hiển thị bộ đếm FPS hay không.
         frameAdvance: Cờ debug cho chế độ bước từng frame.
-        gameState: Trạng thái hiện tại ('attract_mode', 'playing', 'exploding').
+        gameState: Trạng thái hiện tại ('attract_mode', 'playing', 'exploding', 'game_over').
         rockList: Danh sách toàn bộ instance Rock đang hoạt động.
         saucerList: Danh sách các Saucer đang hoạt động (tối đa 3).
         secondsCount: Bộ đếm frame dùng cho các sự kiện định thời.
         score: Điểm hiện tại của người chơi.
+        lastRank: Vị trí xếp hạng của lần chơi vừa kết thúc.
         ship: Instance Ship của người chơi.
         lives: Số mạng còn lại.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
     explodingTtl = 180
 
@@ -53,11 +55,11 @@ class Asteroids():
         """
         Khởi tạo game ở chế độ attract mode với cấu hình mặc định.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.stage = Stage('Atari Asteroids')
         self.paused = False
-        self.showingFPS = False
+        self.debugMode = False
         self.frameAdvance = False
         self.gameState = "attract_mode"
         self.rockList = []
@@ -76,25 +78,29 @@ class Asteroids():
         self._all_objects = []
         self.quadtree = None
         self.nextDualPowerup = 5000
+        self.lastRank = None
+        self.playerName = ""
         self._initDispatcher()
 
     def initialiseGame(self):
         """
         Đặt lại toàn bộ trạng thái game và bắt đầu phiên chơi mới.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.gameState = 'playing'
         [self.stage.removeSprite(sprite)
          for sprite in self.rockList]  
         for saucer in self.saucerList[:]:
             self.killSaucer(saucer)
-        self.startLives = 5
+        cfg = load_config()
+        self.startLives = cfg.get("start_lives", 5)
+        self.saucerMaxCount = cfg.get("saucer_max_count", 4)
         self.createNewShip()
         self.createLivesList()
         self.score = 0
         self.rockList = []
-        self.numRocks = 15
+        self.numRocks = cfg.get("start_rocks", 15)
         self.nextLife = 10000
         self.nextDualPowerup = 5000
 
@@ -105,7 +111,7 @@ class Asteroids():
         """
         Tạo tàu người chơi mới với bất tử và cập nhật tham chiếu cho đĩa bay.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if self.ship:
             [self.stage.spriteList.remove(debris)
@@ -122,7 +128,7 @@ class Asteroids():
         """
         Tạo các icon đếm mạng trên HUD ở góc phải trên.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.lives += 1
         self.livesList = []
@@ -136,7 +142,7 @@ class Asteroids():
         Args:
             lifeNumber: Vị trí thứ tự của icon mạng dùng cho layout.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.lives += 1
         ship = Ship(self.stage)
@@ -153,7 +159,7 @@ class Asteroids():
         Args:
             numRocks: Số thiên thạch lớn cần spawn.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         for _ in range(0, numRocks):
             edge = random.choice(['top', 'bottom', 'left', 'right'])
@@ -181,7 +187,7 @@ class Asteroids():
         """
         Chạy vòng lặp game chính ở 60 FPS.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         clock = pygame.time.Clock()
 
@@ -210,9 +216,9 @@ class Asteroids():
             self.stage.drawSprites()
             self.doSaucerLogic()
             self.displayScore()
-            if self.showingFPS:
+            if self.debugMode:
                 self.displayFps()
-            self.displayCollisionInfo()
+                self.displayCollisionInfo()
             self._updateFloatingTexts()
             self.checkScore()
 
@@ -220,6 +226,27 @@ class Asteroids():
                 self.playing()
             elif self.gameState == 'exploding':
                 self.exploding()
+            elif self.gameState == 'entering_name':
+                self.checkCollisions()
+                if self.secondsCount % 300 == 0:
+                    self.createRocks(2)
+                if len(self.rockList) == 0:
+                    self.createRocks(8)
+                self.displayNameEntry()
+            elif self.gameState == 'game_over':
+                self.checkCollisions()
+                if self.secondsCount % 300 == 0:
+                    self.createRocks(2)
+                if len(self.rockList) == 0:
+                    self.createRocks(8)
+                self.displayGameOver()
+            elif self.gameState == 'confirm_reset_score':
+                self.checkCollisions()
+                if self.secondsCount % 300 == 0:
+                    self.createRocks(2)
+                if len(self.rockList) == 0:
+                    self.createRocks(8)
+                self.displayGameOver(show_reset_prompt=True)
             else:
                 self.checkCollisions()
                 if self.secondsCount % 300 == 0:
@@ -234,10 +261,15 @@ class Asteroids():
         """
         Xử lý logic mỗi frame khi game đang ở trạng thái playing.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if self.lives == 0:
-            self.gameState = 'attract_mode'
+            if qualifies(self.score):
+                self.playerName = ""
+                self.gameState = 'entering_name'
+            else:
+                self.lastRank = None
+                self.gameState = 'game_over'
         else:
             self.processKeys()
             self.checkCollisions()
@@ -253,13 +285,14 @@ class Asteroids():
         """
         Quản lý vòng đời đĩa bay: despawn khi đạt giới hạn lap và spawn mới theo timer (tối đa 4).
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         for saucer in self.saucerList[:]:
             if saucer.laps >= 2:
                 self.killSaucer(saucer)
 
-        if self.secondsCount % 150 == 0 and len(self.saucerList) < 4:
+        max_saucers = getattr(self, 'saucerMaxCount', 4)
+        if self.secondsCount % 150 == 0 and len(self.saucerList) < max_saucers:
             randVal = random.randrange(0, 10)
             if randVal <= 2:
                 newSaucer = Saucer(self.stage, Saucer.largeSaucerType, self.ship)
@@ -274,7 +307,7 @@ class Asteroids():
         """
         Xử lý animation phá hủy tàu và đếm ngược respawn.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.checkCollisions()
         self.doSaucerLogic()
@@ -294,26 +327,34 @@ class Asteroids():
         """
         Tăng cấp độ khó bằng cách spawn thêm thiên thạch.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.numRocks += 2
         self.createRocks(self.numRocks)
 
     def displayText(self):
         """
-        Render màn hình tiêu đề với tên game, hướng dẫn, và bản quyền.
+        Render màn hình tiêu đề với tên game, hướng dẫn, điểm cao nhất, và bản quyền.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
-        font1 = pygame.font.Font('../res/Hyperspace.otf', 50)
-        font2 = pygame.font.Font('../res/Hyperspace.otf', 20)
-        font3 = pygame.font.Font('../res/Hyperspace.otf', 30)
-        font4 = pygame.font.Font('../res/Hyperspace.otf', 15)
+        font1 = pygame.font.Font(resource_path('Hyperspace.otf'), 50)
+        font2 = pygame.font.Font(resource_path('Hyperspace.otf'), 20)
+        font3 = pygame.font.Font(resource_path('Hyperspace.otf'), 30)
+        font4 = pygame.font.Font(resource_path('Hyperspace.otf'), 15)
 
         titleText = font1.render('Asteroids', True, (180, 180, 180))
         titleTextRect = titleText.get_rect(centerx=self.stage.width/2)
-        titleTextRect.y = self.stage.height/2 - titleTextRect.height*2
+        titleTextRect.y = self.stage.height/2 - titleTextRect.height*3
         self.stage.screen.blit(titleText, titleTextRect)
+
+        # Hiển thị điểm cao nhất mọi thời đại
+        top = get_top_score()
+        if top > 0:
+            hs_text = font3.render(f'HIGH SCORE: {top}', True, (255, 215, 0))
+            hs_rect = hs_text.get_rect(centerx=self.stage.width/2)
+            hs_rect.y = titleTextRect.y + titleTextRect.height + 10
+            self.stage.screen.blit(hs_text, hs_rect)
 
         keysText = font2.render(
             '(C) 1979 Atari INC.', True, (255, 255, 255))
@@ -336,8 +377,10 @@ class Asteroids():
             "G : Burst Fire (Cone)",
             "H : Hyperspace",
             "P : Pause",
+            "M : Mute/Unmute",
+            "T : Settings",
             "F11 : Fullscreen",
-            "M : Mute/Unmute"
+            "Ctrl+Alt+S : Self-Destruct"
         ]
         
         start_y = instructionTextRect.y + 60
@@ -347,13 +390,168 @@ class Asteroids():
             ctrl_rect.y = start_y + (i * 25)
             self.stage.screen.blit(ctrl_text, ctrl_rect)
 
+    def displayNameEntry(self):
+        """
+        Render màn hình nhập tên khi người chơi đạt top 10.
+
+        Hiển thị điểm số, ô nhập tên với con trỏ nhấp nháy,
+        và hướng dẫn nhấn Enter để xác nhận.
+
+        Last Modified: 2026-05-13
+        """
+        cx = self.stage.width / 2
+        font_title = pygame.font.Font(resource_path('Hyperspace.otf'), 50)
+        font_score = pygame.font.Font(resource_path('Hyperspace.otf'), 30)
+        font_label = pygame.font.Font(resource_path('Hyperspace.otf'), 22)
+        font_input = pygame.font.Font(resource_path('Hyperspace.otf'), 36)
+        font_hint = pygame.font.Font(resource_path('Hyperspace.otf'), 16)
+
+        # Semi-transparent overlay
+        overlay = pygame.Surface((self.stage.width, self.stage.height), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 160))
+        self.stage.screen.blit(overlay, (0, 0))
+
+        # NEW HIGH SCORE title
+        title = font_title.render('NEW HIGH SCORE!', True, (255, 215, 0))
+        title_rect = title.get_rect(centerx=cx, y=80)
+        self.stage.screen.blit(title, title_rect)
+
+        # Score display
+        sc = font_score.render(f'SCORE: {self.score}', True, (255, 255, 255))
+        sc_rect = sc.get_rect(centerx=cx, y=title_rect.bottom + 20)
+        self.stage.screen.blit(sc, sc_rect)
+
+        # "Enter your name:" label
+        label = font_label.render('ENTER YOUR NAME:', True, (200, 200, 200))
+        label_rect = label.get_rect(centerx=cx, y=sc_rect.bottom + 40)
+        self.stage.screen.blit(label, label_rect)
+
+        # Name input field with blinking cursor
+        cursor_char = '_' if (self.secondsCount // 20) % 2 == 0 else ' '
+        display_name = self.playerName + cursor_char
+        name_text = font_input.render(display_name, True, (100, 255, 100))
+        name_rect = name_text.get_rect(centerx=cx, y=label_rect.bottom + 15)
+
+        # Draw input box background
+        box_padding = 20
+        box_rect = pygame.Rect(
+            name_rect.x - box_padding,
+            name_rect.y - box_padding // 2,
+            max(name_rect.width + box_padding * 2, 300),
+            name_rect.height + box_padding
+        )
+        box_rect.centerx = cx
+        pygame.draw.rect(self.stage.screen, (40, 40, 40), box_rect)
+        pygame.draw.rect(self.stage.screen, (100, 255, 100), box_rect, 2)
+
+        # Re-center name text inside box
+        name_rect.centerx = cx
+        self.stage.screen.blit(name_text, name_rect)
+
+        # Hint text
+        hint = font_hint.render('Press ENTER to confirm  |  Max 10 characters', True, (150, 150, 150))
+        hint_rect = hint.get_rect(centerx=cx, y=box_rect.bottom + 15)
+        self.stage.screen.blit(hint, hint_rect)
+
+    def displayGameOver(self, show_reset_prompt=False):
+        """
+        Args:
+            show_reset_prompt: Bật/tắt trạng thái chờ reset.
+
+        Render màn hình game over với bảng xếp hạng top 10 và điểm hiện tại.
+
+        Hiển thị tiêu đề GAME OVER, điểm lần chơi vừa rồi, bảng top 10
+        với highlight cho vị trí vừa đạt được, và lời nhắc nhấn SPACE.
+
+        Last Modified: 2026-05-13
+        """
+        cx = self.stage.width / 2
+        font_title = pygame.font.Font(resource_path('Hyperspace.otf'), 50)
+        font_score = pygame.font.Font(resource_path('Hyperspace.otf'), 30)
+        font_entry = pygame.font.Font(resource_path('Hyperspace.otf'), 18)
+        font_prompt = pygame.font.Font(resource_path('Hyperspace.otf'), 24)
+        font_header = pygame.font.Font(resource_path('Hyperspace.otf'), 22)
+
+        # Semi-transparent overlay
+        overlay = pygame.Surface((self.stage.width, self.stage.height), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 140))
+        self.stage.screen.blit(overlay, (0, 0))
+
+        # GAME OVER title
+        go_text = font_title.render('GAME OVER', True, (255, 60, 60))
+        go_rect = go_text.get_rect(centerx=cx, y=40)
+        self.stage.screen.blit(go_text, go_rect)
+
+        # Current score
+        sc_text = font_score.render(f'YOUR SCORE: {self.score}', True, (255, 255, 255))
+        sc_rect = sc_text.get_rect(centerx=cx, y=go_rect.bottom + 15)
+        self.stage.screen.blit(sc_text, sc_rect)
+
+        # Rank info
+        if self.lastRank is not None:
+            rank_color = (255, 215, 0) if self.lastRank <= 3 else (100, 255, 100)
+            rank_text = font_header.render(
+                f'NEW HIGH SCORE! RANK #{self.lastRank}', True, rank_color)
+        else:
+            rank_text = font_header.render(
+                'Did not make the top 10', True, (180, 180, 180))
+        rank_rect = rank_text.get_rect(centerx=cx, y=sc_rect.bottom + 8)
+        self.stage.screen.blit(rank_text, rank_rect)
+
+        # Top 10 header
+        header = font_header.render('--- TOP 10 ---', True, (255, 215, 0))
+        header_rect = header.get_rect(centerx=cx, y=rank_rect.bottom + 20)
+        self.stage.screen.blit(header, header_rect)
+
+        # Top 10 entries
+        scores = load_scores()
+        table_y = header_rect.bottom + 10
+        row_height = 28
+
+        for i in range(10):
+            rank_num = i + 1
+            if i < len(scores):
+                entry = scores[i]
+                entry_str = f'{rank_num:>2}.  {entry["name"]:<10s}  {entry["score"]:>8}'
+            else:
+                entry_str = f'{rank_num:>2}.  {"---":<10s}  {"---":>8}'
+
+            # Highlight the player's rank
+            if self.lastRank is not None and rank_num == self.lastRank:
+                color = (255, 255, 100)
+                entry_str += '  <-- YOU'
+            elif rank_num <= 3:
+                color = (255, 215, 0)
+            else:
+                color = (200, 200, 200)
+
+            entry_text = font_entry.render(entry_str, True, color)
+            entry_rect = entry_text.get_rect(centerx=cx, y=table_y + i * row_height)
+            self.stage.screen.blit(entry_text, entry_rect)
+
+        # Blinking prompt
+        if show_reset_prompt:
+            prompt = font_prompt.render('Are you sure? (Y/Enter to reset, other to cancel)', True, (255, 100, 100))
+            prompt_rect = prompt.get_rect(centerx=cx, y=table_y + 10 * row_height + 25)
+            self.stage.screen.blit(prompt, prompt_rect)
+        elif (self.secondsCount // 30) % 2 == 0:
+            prompt = font_prompt.render('Press SPACE to Play Again', True, (200, 200, 200))
+            prompt_rect = prompt.get_rect(
+                centerx=cx, y=table_y + 10 * row_height + 25)
+            self.stage.screen.blit(prompt, prompt_rect)
+            
+            menu_prompt = font_entry.render('Press M for Main Menu', True, (150, 150, 150))
+            menu_rect = menu_prompt.get_rect(
+                centerx=cx, y=prompt_rect.bottom + 15)
+            self.stage.screen.blit(menu_prompt, menu_rect)
+
     def displayScore(self):
         """
         Render điểm số hiện tại ở góc trái trên màn hình.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
-        font1 = pygame.font.Font('../res/Hyperspace.otf', 30)
+        font1 = pygame.font.Font(resource_path('Hyperspace.otf'), 30)
         scoreStr = str("%02d" % self.score)
         scoreText = font1.render(scoreStr, True, (200, 200, 200))
         scoreTextRect = scoreText.get_rect(centerx=100, centery=45)
@@ -363,10 +561,10 @@ class Asteroids():
         """
         Render overlay tạm dừng khi game bị pause.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if self.paused:
-            font1 = pygame.font.Font('../res/Hyperspace.otf', 30)
+            font1 = pygame.font.Font(resource_path('Hyperspace.otf'), 30)
             pausedText = font1.render("Paused", True, (255, 255, 255))
             textRect = pausedText.get_rect(
                 centerx=self.stage.width/2, centery=self.stage.height/2)
@@ -380,7 +578,7 @@ class Asteroids():
         Args:
             events: Danh sách sự kiện pygame từ frame hiện tại.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.frameAdvance = False
         for event in events:
@@ -396,40 +594,65 @@ class Asteroids():
                         self.ship.fireBurst()
                     elif event.key == K_h:
                         self.ship.enterHyperSpace()
-                elif self.gameState == 'attract_mode':
+                    elif (event.key == K_s
+                          and event.mod & KMOD_CTRL
+                          and event.mod & KMOD_ALT):
+                        self.lives = 1
+                        self.killShip()
+                elif self.gameState == 'entering_name':
+                    if event.key == K_RETURN:
+                        name = self.playerName.strip() or "PLAYER"
+                        self.lastRank = add_score(self.score, name)
+                        self.gameState = 'game_over'
+                    elif event.key == K_BACKSPACE:
+                        self.playerName = self.playerName[:-1]
+                    elif len(self.playerName) < 10 and event.unicode.isprintable() and event.unicode:
+                        self.playerName += event.unicode.upper()
+                elif self.gameState == 'confirm_reset_score':
+                    if event.key in (K_y, K_RETURN):
+                        reset_scores()
+                        self.lastRank = None
+                        self.gameState = 'game_over'
+                    elif not (event.mod & KMOD_CTRL or event.mod & KMOD_ALT or event.mod & KMOD_SHIFT):
+                        self.gameState = 'game_over'
+                elif self.gameState in ('attract_mode', 'game_over'):
                     if event.key == K_SPACE:
                         self.initialiseGame()
+                    elif self.gameState == 'attract_mode' and event.key == K_t:
+                        show_settings_gui()
+                    elif self.gameState == 'game_over' and (event.key == K_r and event.mod & KMOD_CTRL and event.mod & KMOD_ALT):
+                        self.gameState = 'confirm_reset_score'
 
-                if event.key == K_p:
-                    if self.paused:  
-                        self.paused = False
-                    else:
-                        self.paused = True
+                if self.gameState != 'entering_name':
+                    if event.key == K_p:
+                        self.paused = not self.paused
 
-                if event.key == K_j:
-                    if self.showingFPS:  
-                        self.showingFPS = False
-                    else:
-                        self.showingFPS = True
+                    if event.key == K_m:
+                        if self.gameState == 'game_over':
+                            self.gameState = 'attract_mode'
+                        else:
+                            toggleMute()
 
-                if event.key == K_m:
-                    toggleMute()
+                    if event.key == K_F11:
+                        pygame.display.toggle_fullscreen()
 
-                if event.key == K_q:
+                    # Debug mode: Ctrl+Alt+Q to toggle
+                    if (event.key == K_q
+                            and event.mod & KMOD_CTRL
+                            and event.mod & KMOD_ALT):
+                        self.debugMode = not self.debugMode
+                elif self.debugMode and event.key == K_q:
                     self.useQuadTree = not self.useQuadTree
 
-                if event.key == K_F11:
-                    pygame.display.toggle_fullscreen()
-
             elif event.type == KEYUP:
-                if event.key == K_o:
+                if self.debugMode and event.key == K_o:
                     self.frameAdvance = True
 
     def processKeys(self):
         """
         Đọc trạng thái phím giữ cho điều khiển liên tục (đẩy, xoay).
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         key = pygame.key.get_pressed()
 
@@ -449,7 +672,7 @@ class Asteroids():
         """
         Phát hiện va chạm event-based và đo thời gian.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         t0 = time.perf_counter()
 
@@ -493,12 +716,16 @@ class Asteroids():
 
     def _classifyCollision(self, a, b):
         """
+        Args:
+            a: Thực thể A.
+            b: Thực thể B.
+
         Phân loại cặp va chạm theo kiểu thực thể.
 
         Returns:
             Hằng số kiểu va chạm, hoặc None nếu không hợp lệ.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         from dsa.collision import (ROCK_ROCK, BULLET_ROCK, BULLET_SAUCER,
                                     BULLET_SHIP, ROCK_SHIP, ROCK_SAUCER,
@@ -539,7 +766,7 @@ class Asteroids():
         """
         Khởi tạo CollisionDispatcher và đăng ký handler.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         from dsa.collision import (CollisionDispatcher, ROCK_ROCK,
                                     BULLET_ROCK, BULLET_SAUCER,
@@ -556,9 +783,12 @@ class Asteroids():
 
     def _onRockRock(self, event):
         """
+        Args:
+            event: Sự kiện va chạm chứa entity_a và entity_b.
+
         Xử lý va chạm thiên thạch - thiên thạch. Bỏ qua nếu có thiên thạch siêu nhỏ.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         rock, other = event.entity_a, event.entity_b
         if rock.rockType == Rock.tinyRockType or other.rockType == Rock.tinyRockType:
@@ -609,9 +839,12 @@ class Asteroids():
 
     def _onBulletRock(self, event):
         """
+        Args:
+            event: Sự kiện va chạm.
+
         Xử lý đạn trúng thiên thạch.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         bullet = event.entity_a if isinstance(event.entity_a, Bullet) else event.entity_b
         rock = event.entity_a if isinstance(event.entity_a, Rock) else event.entity_b
@@ -621,9 +854,12 @@ class Asteroids():
 
     def _onBulletSaucer(self, event):
         """
+        Args:
+            event: Sự kiện va chạm.
+
         Xử lý đạn người chơi trúng đĩa bay.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         bullet = event.entity_a if isinstance(event.entity_a, Bullet) else event.entity_b
         saucer = event.entity_a if isinstance(event.entity_a, Saucer) else event.entity_b
@@ -638,9 +874,12 @@ class Asteroids():
 
     def _onBulletShip(self, event):
         """
+        Args:
+            event: Sự kiện va chạm.
+
         Xử lý đạn đĩa bay trúng tàu người chơi.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         bullet = event.entity_a if isinstance(event.entity_a, Bullet) else event.entity_b
         bullet.ttl = 0
@@ -649,23 +888,30 @@ class Asteroids():
 
     def _onRockShip(self, event):
         """
+        Args:
+            event: Sự kiện va chạm.
+
         Xử lý va chạm thiên thạch - tàu. Tiny rock chỉ bị phá hủy, không hại tàu.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         rock = event.entity_a if isinstance(event.entity_a, Rock) else event.entity_b
         ship = event.entity_a if isinstance(event.entity_a, Ship) else event.entity_b
         p = rock.checkPolygonCollision(ship)
         if p is not None and self.gameState == 'playing':
+            rock._killed_by_player = True
             self._destroyedRocks.add(rock)
             if rock.rockType != Rock.tinyRockType:
                 self._shipHit = True
 
     def _onRockSaucer(self, event):
         """
+        Args:
+            event: Sự kiện va chạm.
+
         Xử lý va chạm thiên thạch - đĩa bay. Tiny rock chỉ bị phá hủy, không hại đĩa bay.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         rock = event.entity_a if isinstance(event.entity_a, Rock) else event.entity_b
         saucer = event.entity_a if isinstance(event.entity_a, Saucer) else event.entity_b
@@ -675,9 +921,12 @@ class Asteroids():
 
     def _onSaucerShip(self, event):
         """
+        Args:
+            event: Sự kiện va chạm.
+
         Xử lý va chạm đĩa bay - tàu.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         saucer = event.entity_a if isinstance(event.entity_a, Saucer) else event.entity_b
         if self.gameState == 'playing':
@@ -686,9 +935,12 @@ class Asteroids():
 
     def _destroyRock(self, rock):
         """
+        Args:
+            rock: Thiên thạch cần phá hủy.
+
         Phá hủy thiên thạch, tính điểm với cluster multiplier, và spawn mảnh.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if rock not in self.rockList:
             return
@@ -718,8 +970,6 @@ class Asteroids():
             self.score += bonus
             if multiplier > 1.0:
                 self._spawnFloatingText(rock.position, bonus, multiplier)
-        elif self.gameState == 'playing':
-            self.score += baseScore
 
         if rock.rockType == Rock.smallRockType:
             position = Vector2d(rock.position.x, rock.position.y)
@@ -740,9 +990,14 @@ class Asteroids():
 
     def _getClusterMultiplier(self, target):
         """
+        Args:
+            target: Mục tiêu để tính toán.
+        Returns:
+            Hệ số nhân.
+
         Tính hệ số nhân điểm dựa trên mật độ cụm (dùng QuadTree hoặc brute-force).
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         cx, cy = target.position.x, target.position.y
         r = self.clusterRadius
@@ -766,9 +1021,16 @@ class Asteroids():
 
     def _spawnFloatingText(self, position, score, multiplier, text=None, color=None):
         """
+        Args:
+            position: Vị trí xuất hiện.
+            score: Điểm số.
+            multiplier: Hệ số nhân.
+            text: Ký tự tùy chọn.
+            color: Màu sắc tùy chọn.
+
         Tạo text điểm nổi tại vị trí phá hủy.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if text is None:
             text = f"+{score} x{multiplier:.1f}"
@@ -784,9 +1046,9 @@ class Asteroids():
         """
         Cập nhật và render các floating text điểm.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
-        font = pygame.font.Font('../res/Hyperspace.otf', 16)
+        font = pygame.font.Font(resource_path('Hyperspace.otf'), 16)
         for ft in self.floatingTexts[:]:
             ft['ttl'] -= 1
             ft['y'] -= 0.8
@@ -806,9 +1068,9 @@ class Asteroids():
         """
         Render thông tin phương pháp va chạm, số thực thể, và thời gian xử lý.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
-        font = pygame.font.Font('../res/Hyperspace.otf', 14)
+        font = pygame.font.Font(resource_path('Hyperspace.otf'), 14)
         method = "QuadTree" if self.useQuadTree else "Brute-Force"
         color = (100, 255, 100) if self.useQuadTree else (255, 200, 100)
         line1 = font.render(
@@ -824,7 +1086,7 @@ class Asteroids():
         """
         Phá hủy tàu người chơi, kích hoạt hiệu ứng nổ, và chuyển sang trạng thái exploding.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         stopSound("thrust")
         playSound("explode2")
@@ -846,7 +1108,7 @@ class Asteroids():
         Args:
             saucer: Instance Saucer cần phá hủy.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         stopSound("lsaucer")
         stopSound("ssaucer")
@@ -862,7 +1124,7 @@ class Asteroids():
         Args:
             sprite: Sprite bị phá hủy dùng để tạo debris.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         for _ in range(0, 25):
             position = Vector2d(sprite.position.x, sprite.position.y)
@@ -875,9 +1137,9 @@ class Asteroids():
         """
         Render bộ đếm FPS hiện tại ở giữa trên màn hình.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
-        font2 = pygame.font.Font('../res/Hyperspace.otf', 15)
+        font2 = pygame.font.Font(resource_path('Hyperspace.otf'), 15)
         fpsStr = str(self.fps)+(' FPS')
         scoreText = font2.render(fpsStr, True, (255, 255, 255))
         scoreTextRect = scoreText.get_rect(
@@ -888,7 +1150,7 @@ class Asteroids():
         """
         Thưởng thêm mạng mỗi 10k điểm, nâng cấp đạn (Triple, Quad,...) mỗi 5k điểm.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if self.score > 0 and self.score > self.nextLife:
             playSound("extralife")

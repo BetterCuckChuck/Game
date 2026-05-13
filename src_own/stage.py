@@ -4,7 +4,7 @@ Module quản lý Stage cho game Asteroids.
 Xử lý pygame display surface, render sprite, cập nhật di chuyển,
 và screen wrapping cho toàn bộ thực thể trong game.
 
-Last Modified: 2026-05-06
+Last Modified: 2026-05-13
 """
 
 import pygame
@@ -27,7 +27,7 @@ class Stage:
         height: Độ phân giải dọc tính bằng pixel.
         showBoundingBoxes: Cờ debug hiển thị viền AABB.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
 
     def __init__(self, caption, dimensions=None):
@@ -39,7 +39,7 @@ class Stage:
             dimensions: Độ phân giải dạng (width, height). Mặc định dùng
                 độ phân giải gốc của màn hình chính.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         pygame.init()
 
@@ -64,7 +64,7 @@ class Stage:
         Args:
             sprite: Instance VectorSprite cần thêm.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.spriteList.append(sprite)
         sprite.rect = pygame.draw.aalines(
@@ -77,7 +77,7 @@ class Stage:
         Args:
             sprite: Instance VectorSprite cần gỡ.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.spriteList.remove(sprite)
 
@@ -85,7 +85,7 @@ class Stage:
         """
         Render toàn bộ sprite đã đăng ký, tùy chọn vẽ bounding box.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         for sprite in self.spriteList:
             sprite.rect = pygame.draw.aalines(
@@ -98,7 +98,7 @@ class Stage:
         """
         Cập nhật vị trí toàn bộ sprite và áp dụng screen wrapping.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         for sprite in self.spriteList:
             sprite.move()

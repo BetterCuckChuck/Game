@@ -1,0 +1,1498 @@
+FILE: config.py
+===============
+[Module]
+Quản lý cấu hình game (đọc/ghi từ JSON) và giao diện cài đặt (GUI) bằng Tkinter.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def load_config():
+Đọc cấu hình từ file JSON. Nếu không có hoặc lỗi, trả về mặc định.
+
+Returns:
+    Dict cấu hình đang sử dụng.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def save_config(cfg):
+Ghi cấu hình ra file JSON.
+
+Args:
+    cfg: Dict chứa cấu hình cần lưu.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def show_settings_gui(on_close_callback):
+Mở cửa sổ Tkinter để chỉnh sửa cấu hình trực quan.
+
+Args:
+    on_close_callback: Hàm gọi lại khi cửa sổ đóng.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def add_fields(parent, config_dict):
+Thêm các trường nhập liệu vào giao diện cài đặt.
+
+Args:
+    parent: Giao diện cha chứa trường nhập.
+    config_dict: Cấu hình mặc định.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def save_and_close():
+Lưu lại thay đổi cấu hình và đóng cửa sổ giao diện.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def reset_defaults():
+Khôi phục lại các giá trị cấu hình mặc định.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def on_closing():
+Xử lý sự kiện khi đóng cửa sổ cài đặt.
+
+Last Modified: 2026-05-13
+--------------------
+
+FILE: enemies.py
+================
+[Module]
+Các thực thể địch: thiên thạch, hạt hiệu ứng, và AI đĩa bay.
+
+Cung cấp lớp Rock cho thiên thạch với bốn cấp kích thước,
+Debris cho hiệu ứng hạt khi phá hủy, và Saucer cho tàu địch
+với ba cấp độ khó sử dụng AI pathfinding.
+
+Last Modified: 2026-05-13
+--------------------
+[Class] class Rock(VectorSprite):
+Thiên thạch với hình dạng, kích thước, và vận tốc ngẫu nhiên.
+
+Thiên thạch có bốn cấp kích thước (lớn, vừa, nhỏ, siêu nhỏ) với hệ số
+vận tốc và tỷ lệ tương ứng. Thiên thạch siêu nhỏ chỉ bị phá hủy
+bởi đạn hoặc va chạm với tàu người chơi.
+
+Attributes:
+    rockType: Chỉ số cấp kích thước (0=lớn, 1=vừa, 2=nhỏ, 3=siêu nhỏ).
+    rockShape: Bộ đếm class-level xoay vòng qua các biến thể đa giác.
+    velocities: Vận tốc tối đa theo từng cấp.
+    scales: Hệ số co giãn đa giác theo từng cấp.
+
+Last Modified: 2026-05-13
+--------------------
+[Class] class Debris(Point):
+Hạt hiệu ứng ngắn hạn sinh ra khi thực thể bị phá hủy.
+
+Kế thừa màu từ thực thể bị phá hủy và mờ dần theo thời gian
+bằng cách giảm giá trị RGB mỗi frame.
+
+Attributes:
+    ttl: Số frame còn lại (mặc định 50).
+
+Last Modified: 2026-05-13
+--------------------
+[Class] class Saucer(Shooter):
+Tàu địch với ba cấp độ khó.
+
+- Lớn (type 0): Di chuyển dích dắc đơn giản, không dùng pathfinding.
+- Vừa (type 1): Dùng BFS pathfinding để né chướng ngại vật.
+- Khó (type 2): Dùng A* pathfinding để tối ưu tránh chướng ngại vật.
+
+Cả ba cấp đều ngắm và bắn vào tàu người chơi. Khi người chơi
+bị phá hủy, đĩa bay chuyển về di chuyển ngang đơn giản và
+ngừng bắn cho đến khi thoát khỏi màn hình.
+
+Attributes:
+    saucerType: Chỉ số cấp độ khó (0=lớn, 1=vừa, 2=khó).
+    ship: Tham chiếu đến Ship người chơi để ngắm bắn.
+    scoreValue: Điểm thưởng khi bị tiêu diệt.
+    laps: Số lần đã đi qua rìa màn hình (wrap-around).
+    lastx: Tọa độ x frame trước để phát hiện wrap.
+    pathfinder: Instance GridPathfinder để tránh chướng ngại vật.
+    fire_cooldown: Số frame còn lại trước khi được bắn tiếp.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def __init__(self, stage, position, rockType):
+Khởi tạo thiên thạch với hướng bay ngẫu nhiên.
+
+Args:
+    stage: Instance Stage quản lý sprite.
+    position: Vị trí spawn, dạng Vector2d.
+    rockType: Chỉ số cấp kích thước (0=lớn, 1=vừa, 2=nhỏ, 3=siêu nhỏ).
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def createPointList(self):
+Tạo danh sách đỉnh đa giác cho biến thể hình dạng hiện tại.
+
+Xoay vòng qua bốn dạng đa giác định sẵn để tạo sự
+đa dạng hình ảnh giữa các thiên thạch.
+
+Returns:
+    Danh sách tuple (x, y) xác định các đỉnh đa giác.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def move(self):
+Cập nhật vị trí và áp dụng xoay đều.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def __init__(self, position, stage):
+Khởi tạo hạt debris với vận tốc trôi ngẫu nhiên.
+
+Args:
+    position: Vị trí spawn, dạng Vector2d.
+    stage: Instance Stage quản lý sprite.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def move(self):
+Cập nhật vị trí và làm mờ dần màu về đen.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def __init__(self, stage, saucerType, ship):
+Khởi tạo đĩa bay với cấu hình theo cấp độ khó.
+
+Args:
+    stage: Instance Stage quản lý sprite.
+    saucerType: Chỉ số cấp độ khó (0=lớn, 1=vừa, 2=khó).
+    ship: Tham chiếu đến Ship người chơi để ngắm bắn.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def move(self):
+Cập nhật vị trí theo chiến lược di chuyển tương ứng cấp độ.
+
+Đĩa bay lớn và đĩa bay khi không có mục tiêu sống dùng di chuyển
+dích dắc ngang đơn giản. Đĩa bay vừa dùng BFS trên lưới nhị phân,
+đĩa bay khó dùng Weighted A* trên danger heatmap để tìm đường
+an toàn nhất trong khi tránh chướng ngại vật.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def fireBullet(self):
+Bắn đạn nhắm vào tàu người chơi.
+
+Tuân thủ fire cooldown và giới hạn băng đạn theo cấp độ.
+Đạn kế thừa màu của đĩa bay để phân biệt trực quan.
+
+Last Modified: 2026-05-13
+--------------------
+
+FILE: highscores.py
+===================
+[Module]
+Hệ thống lưu trữ và quản lý bảng điểm cao.
+
+Cung cấp các hàm đọc, ghi, và cập nhật bảng xếp hạng top 10
+điểm cao nhất, lưu trữ dưới dạng JSON để duy trì giữa các phiên chơi.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def load_scores():
+Đọc bảng điểm cao từ file JSON.
+
+Returns:
+    Danh sách dict [{"name": str, "score": int}, ...] sắp xếp giảm dần,
+    tối đa MAX_ENTRIES phần tử. Trả về danh sách rỗng nếu file chưa tồn tại.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def reset_scores():
+Xóa toàn bộ điểm số cao và ghi đè file bằng danh sách rỗng.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def save_scores(scores):
+Ghi bảng điểm cao ra file JSON.
+
+Args:
+    scores: Danh sách dict [{"name": str, "score": int}, ...].
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def add_score(score, name):
+Thêm điểm mới vào bảng xếp hạng nếu đủ điều kiện.
+
+Điểm được thêm vào nếu bảng chưa đầy hoặc điểm mới cao hơn
+điểm thấp nhất trong bảng. Bảng luôn được giữ tối đa MAX_ENTRIES.
+
+Args:
+    score: Điểm số cần thêm (int).
+    name: Tên người chơi (str). Mặc định "PLAYER".
+
+Returns:
+    Vị trí xếp hạng (1-indexed) nếu được thêm, hoặc None nếu không đủ điều kiện.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def get_top_score():
+Lấy điểm cao nhất trong bảng.
+
+Returns:
+    Điểm cao nhất (int), hoặc 0 nếu bảng trống.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def qualifies(score):
+Kiểm tra xem điểm số có đủ điều kiện vào bảng top 10 hay không.
+
+Args:
+    score: Điểm số cần kiểm tra (int).
+
+Returns:
+    True nếu điểm đủ điều kiện (bảng chưa đầy hoặc cao hơn điểm thấp nhất).
+
+Last Modified: 2026-05-13
+--------------------
+
+FILE: main.py
+=============
+[Module]
+Entry point và controller chính của game Asteroids.
+
+Cài đặt lớp Asteroids chứa vòng lặp game chính, máy trạng thái,
+pipeline phát hiện va chạm, hệ thống tính điểm, và quản lý
+vòng đời thực thể.
+
+Last Modified: 2026-05-13
+--------------------
+[Class] class Asteroids:
+Controller chính quản lý vòng lặp game và trạng thái.
+
+Điều phối tất cả hệ thống con bao gồm render, xử lý input,
+phát hiện va chạm, tính điểm, và quản lý vòng đời thực thể.
+
+Attributes:
+    explodingTtl: Thời lượng animation phá hủy tàu (frame).
+    stage: Instance Stage quản lý display surface.
+    paused: Game có đang tạm dừng hay không.
+    showingFPS: Có hiển thị bộ đếm FPS hay không.
+    frameAdvance: Cờ debug cho chế độ bước từng frame.
+    gameState: Trạng thái hiện tại ('attract_mode', 'playing', 'exploding', 'game_over').
+    rockList: Danh sách toàn bộ instance Rock đang hoạt động.
+    saucerList: Danh sách các Saucer đang hoạt động (tối đa 3).
+    secondsCount: Bộ đếm frame dùng cho các sự kiện định thời.
+    score: Điểm hiện tại của người chơi.
+    lastRank: Vị trí xếp hạng của lần chơi vừa kết thúc.
+    ship: Instance Ship của người chơi.
+    lives: Số mạng còn lại.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def __init__(self):
+Khởi tạo game ở chế độ attract mode với cấu hình mặc định.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def initialiseGame(self):
+Đặt lại toàn bộ trạng thái game và bắt đầu phiên chơi mới.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def createNewShip(self):
+Tạo tàu người chơi mới với bất tử và cập nhật tham chiếu cho đĩa bay.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def createLivesList(self):
+Tạo các icon đếm mạng trên HUD ở góc phải trên.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def addLife(self, lifeNumber):
+Thêm icon mạng vào HUD và tăng bộ đếm mạng.
+
+Args:
+    lifeNumber: Vị trí thứ tự của icon mạng dùng cho layout.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def createRocks(self, numRocks):
+Spawn thiên thạch lớn tại các rìa màn hình ngẫu nhiên.
+
+Args:
+    numRocks: Số thiên thạch lớn cần spawn.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def playGame(self):
+Chạy vòng lặp game chính ở 60 FPS.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def playing(self):
+Xử lý logic mỗi frame khi game đang ở trạng thái playing.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def doSaucerLogic(self):
+Quản lý vòng đời đĩa bay: despawn khi đạt giới hạn lap và spawn mới theo timer (tối đa 4).
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def exploding(self):
+Xử lý animation phá hủy tàu và đếm ngược respawn.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def levelUp(self):
+Tăng cấp độ khó bằng cách spawn thêm thiên thạch.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def displayText(self):
+Render màn hình tiêu đề với tên game, hướng dẫn, điểm cao nhất, và bản quyền.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def displayNameEntry(self):
+Render màn hình nhập tên khi người chơi đạt top 10.
+
+Hiển thị điểm số, ô nhập tên với con trỏ nhấp nháy,
+và hướng dẫn nhấn Enter để xác nhận.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def displayGameOver(self, show_reset_prompt):
+Args:
+    show_reset_prompt: Bật/tắt trạng thái chờ reset.
+
+Render màn hình game over với bảng xếp hạng top 10 và điểm hiện tại.
+
+Hiển thị tiêu đề GAME OVER, điểm lần chơi vừa rồi, bảng top 10
+với highlight cho vị trí vừa đạt được, và lời nhắc nhấn SPACE.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def displayScore(self):
+Render điểm số hiện tại ở góc trái trên màn hình.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def displayPaused(self):
+Render overlay tạm dừng khi game bị pause.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def input(self, events):
+Xử lý các sự kiện input pygame cho điều khiển game.
+
+Args:
+    events: Danh sách sự kiện pygame từ frame hiện tại.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def processKeys(self):
+Đọc trạng thái phím giữ cho điều khiển liên tục (đẩy, xoay).
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def checkCollisions(self):
+Phát hiện va chạm event-based và đo thời gian.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def _classifyCollision(self, a, b):
+Args:
+    a: Thực thể A.
+    b: Thực thể B.
+
+Phân loại cặp va chạm theo kiểu thực thể.
+
+Returns:
+    Hằng số kiểu va chạm, hoặc None nếu không hợp lệ.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def _initDispatcher(self):
+Khởi tạo CollisionDispatcher và đăng ký handler.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def _onRockRock(self, event):
+Args:
+    event: Sự kiện va chạm chứa entity_a và entity_b.
+
+Xử lý va chạm thiên thạch - thiên thạch. Bỏ qua nếu có thiên thạch siêu nhỏ.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def _onBulletRock(self, event):
+Args:
+    event: Sự kiện va chạm.
+
+Xử lý đạn trúng thiên thạch.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def _onBulletSaucer(self, event):
+Args:
+    event: Sự kiện va chạm.
+
+Xử lý đạn người chơi trúng đĩa bay.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def _onBulletShip(self, event):
+Args:
+    event: Sự kiện va chạm.
+
+Xử lý đạn đĩa bay trúng tàu người chơi.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def _onRockShip(self, event):
+Args:
+    event: Sự kiện va chạm.
+
+Xử lý va chạm thiên thạch - tàu. Tiny rock chỉ bị phá hủy, không hại tàu.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def _onRockSaucer(self, event):
+Args:
+    event: Sự kiện va chạm.
+
+Xử lý va chạm thiên thạch - đĩa bay. Tiny rock chỉ bị phá hủy, không hại đĩa bay.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def _onSaucerShip(self, event):
+Args:
+    event: Sự kiện va chạm.
+
+Xử lý va chạm đĩa bay - tàu.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def _destroyRock(self, rock):
+Args:
+    rock: Thiên thạch cần phá hủy.
+
+Phá hủy thiên thạch, tính điểm với cluster multiplier, và spawn mảnh.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def _getClusterMultiplier(self, target):
+Args:
+    target: Mục tiêu để tính toán.
+Returns:
+    Hệ số nhân.
+
+Tính hệ số nhân điểm dựa trên mật độ cụm (dùng QuadTree hoặc brute-force).
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def _spawnFloatingText(self, position, score, multiplier, text, color):
+Args:
+    position: Vị trí xuất hiện.
+    score: Điểm số.
+    multiplier: Hệ số nhân.
+    text: Ký tự tùy chọn.
+    color: Màu sắc tùy chọn.
+
+Tạo text điểm nổi tại vị trí phá hủy.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def _updateFloatingTexts(self):
+Cập nhật và render các floating text điểm.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def displayCollisionInfo(self):
+Render thông tin phương pháp va chạm, số thực thể, và thời gian xử lý.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def killShip(self):
+Phá hủy tàu người chơi, kích hoạt hiệu ứng nổ, và chuyển sang trạng thái exploding.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def killSaucer(self, saucer):
+Phá hủy một đĩa bay, dừng âm thanh, và gỡ khỏi danh sách.
+
+Args:
+    saucer: Instance Saucer cần phá hủy.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def createDebris(self, sprite):
+Spawn hạt debris tại vị trí sprite, kế thừa màu của sprite.
+
+Args:
+    sprite: Sprite bị phá hủy dùng để tạo debris.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def displayFps(self):
+Render bộ đếm FPS hiện tại ở giữa trên màn hình.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def checkScore(self):
+Thưởng thêm mạng mỗi 10k điểm, nâng cấp đạn (Triple, Quad,...) mỗi 5k điểm.
+
+Last Modified: 2026-05-13
+--------------------
+
+FILE: res_path.py
+=================
+[Module]
+Tiện ích xác định đường dẫn tài nguyên cho cả môi trường dev và bundled executable.
+
+Khi chạy từ source: trả về đường dẫn tương đối bình thường (../res/).
+Khi chạy từ PyInstaller bundle: trả về đường dẫn trong thư mục tạm _MEIPASS.
+
+Highscores là file duy nhất cần ghi, nên được lưu cạnh executable thay vì
+bên trong bundle (vì _MEIPASS là read-only).
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def _is_bundled():
+Kiểm tra xem ứng dụng có đang chạy từ PyInstaller bundle không.
+
+Returns:
+    True nếu đang chạy từ bundle, False nếu không.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def resource_path(relative_path):
+Trả về đường dẫn tuyệt đối đến file tài nguyên (read-only).
+
+Args:
+    relative_path: Đường dẫn tương đối từ thư mục res/ (ví dụ: 'Hyperspace.otf').
+
+Returns:
+    Đường dẫn tuyệt đối đến file tài nguyên.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def writable_path(filename):
+Trả về đường dẫn ghi được cho file dữ liệu (highscores).
+
+Khi bundled: lưu cạnh file executable.
+Khi dev: lưu trong ../res/ như cũ.
+
+Args:
+    filename: Tên file (ví dụ: 'highscores.json').
+
+Returns:
+    Đường dẫn tuyệt đối ghi được.
+
+Last Modified: 2026-05-13
+--------------------
+
+FILE: ship.py
+=============
+[Module]
+Tàu người chơi và hiệu ứng lửa động cơ.
+
+Cung cấp lớp Ship cho tàu vũ trụ do người chơi điều khiển với
+hệ thống đẩy, xoay, hyperspace, và vũ khí, cùng lớp ThrustJet
+cho hiệu ứng khí xả động cơ.
+
+Last Modified: 2026-05-13
+--------------------
+[Class] class Ship(Shooter):
+Tàu vũ trụ do người chơi điều khiển với hệ thống đẩy, xoay, và vũ khí.
+
+Xử lý gia tốc, giảm tốc, xoay, dịch chuyển hyperspace,
+bắn đạn, và hiệu ứng phá hủy.
+
+Attributes:
+    acceleration: Lực đẩy áp dụng mỗi frame.
+    decelaration: Hệ số ma sát áp dụng mỗi frame.
+    maxVelocity: Giới hạn tốc độ tối đa.
+    thrustJet: Instance ThrustJet cho hiệu ứng khí xả.
+    shipDebrisList: Danh sách mảnh vụn khi tàu bị phá hủy.
+    visible: Tàu có đang được render hay không.
+    inHyperSpace: Tàu có đang trong trạng thái hyperspace (bất tử) hay không.
+
+Last Modified: 2026-05-13
+--------------------
+[Class] class ThrustJet(VectorSprite):
+Hiệu ứng khí xả động cơ gắn liền với tàu người chơi.
+
+Render ngọn lửa tam giác phía sau tàu khi đang đẩy.
+Ẩn đi khi tàu không đẩy hoặc đang trong hyperspace.
+
+Attributes:
+    accelerating: Động cơ có đang hoạt động hay không.
+    ship: Tham chiếu đến instance Ship gốc.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def __init__(self, stage):
+Khởi tạo tàu tại tâm màn hình với cấu hình động từ config.
+
+Args:
+    stage: Instance Stage quản lý sprite.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def draw(self):
+Render tàu, xử lý chuyển tiếp hyperspace và nhấp nháy bất tử.
+
+Returns:
+    Danh sách các đỉnh đa giác đã biến đổi.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def rotateLeft(self):
+Xoay tàu ngược chiều kim đồng hồ một góc turnAngle.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def rotateRight(self):
+Xoay tàu theo chiều kim đồng hồ một góc turnAngle.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def increaseThrust(self):
+Áp dụng lực đẩy theo hướng mũi tàu hiện tại.
+
+Lực đẩy bị giới hạn tại maxVelocity. Phát âm thanh thrust.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def decreaseThrust(self):
+Áp dụng ma sát để giảm dần vận tốc.
+
+Dừng âm thanh thrust khi được gọi.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def changeVelocity(self, dx, dy):
+Thay đổi vận tốc của cả tàu và thrust jet.
+
+Args:
+    dx: Lượng thay đổi vận tốc theo trục ngang.
+    dy: Lượng thay đổi vận tốc theo trục dọc.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def move(self):
+Cập nhật vị trí, áp dụng ma sát giảm tốc, và tick cooldown.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def explode(self):
+Phân rã tàu thành các mảnh vụn riêng lẻ theo từng cạnh.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def addShipDebris(self, pointlist):
+Tạo một mảnh vụn từ một cạnh của tàu.
+
+Mảnh vụn kế thừa màu của tàu và trôi ra xa tâm tàu
+với vận tốc ngẫu nhiên.
+
+Args:
+    pointlist: Danh sách hai điểm xác định cạnh.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def fireBullet(self):
+Bắn đạn theo hướng mũi tàu hiện tại.
+
+Hỗ trợ nhiều cấp độ đạn song song (Multi-Fire).
+Không bắn được khi đang trong trạng thái hyperspace.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def fireBurst(self):
+Bắn đạn theo hình nón, số tia và số đạn mỗi tia tăng theo fireLevel.
+
+Cấp 1: 5 tia x 3 đạn.
+Cấp 3: 9 tia x 4 đạn.
+Cấp 4: 11 tia x 4 đạn.
+...
+Cooldown 60 frame (1 giây).
+
+Returns:
+    True nếu burst thành công, False nếu đang cooldown.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def enterHyperSpace(self):
+Kích hoạt nhảy hyperspace, ẩn tàu và bật trạng thái bất tử.
+
+Tàu xuất hiện lại tại vị trí ngẫu nhiên sau khi hết thời gian
+hyperspace.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def __init__(self, stage, ship):
+Khởi tạo thrust jet gắn với tàu.
+
+Args:
+    stage: Instance Stage quản lý sprite.
+    ship: Instance Ship gốc.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def draw(self):
+Render ngọn lửa, bật/tắt hiển thị theo trạng thái động cơ.
+
+Returns:
+    Danh sách các đỉnh đa giác đã biến đổi.
+
+Last Modified: 2026-05-13
+--------------------
+
+FILE: shooter.py
+================
+[Module]
+Lớp cơ sở Shooter và lớp đạn Bullet.
+
+Định nghĩa mixin Shooter cho các thực thể có khả năng bắn đạn,
+và lớp Bullet đại diện cho từng viên đạn riêng lẻ.
+
+Last Modified: 2026-05-13
+--------------------
+[Class] class Shooter(VectorSprite):
+Lớp cơ sở trừu tượng cho các thực thể có khả năng bắn đạn.
+
+Quản lý danh sách đạn đang hoạt động và cung cấp các phương thức
+bắn đạn mới, phát hiện va chạm đạn-mục tiêu.
+
+Attributes:
+    bullets: Danh sách các instance Bullet đang hoạt động.
+    stage: Instance Stage quản lý sprite.
+
+Last Modified: 2026-05-13
+--------------------
+[Class] class Bullet(Point):
+Viên đạn được bắn ra bởi một Shooter.
+
+Kế thừa màu từ Shooter đã bắn nó. Tự gỡ khỏi danh sách đạn
+của Shooter khi hết thời gian sống.
+
+Attributes:
+    shooter: Instance Shooter đã bắn viên đạn này.
+    ttl: Số frame còn lại trước khi hết hạn.
+    velocity: Tốc độ vô hướng của đạn.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def __init__(self, position, heading, pointlist, stage):
+Khởi tạo Shooter với vị trí và tham chiếu Stage.
+
+Args:
+    position: Vị trí world-space, dạng Vector2d.
+    heading: Vector vận tốc, dạng Vector2d.
+    pointlist: Danh sách đỉnh đa giác xác định hình dạng.
+    stage: Instance Stage quản lý sprite.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def fireBullet(self, heading, ttl, velocity, position):
+Tạo viên đạn mới nếu chưa đạt giới hạn băng đạn.
+
+Args:
+    heading: Vector vận tốc của đạn, dạng Vector2d.
+    ttl: Thời gian sống tính bằng frame.
+    velocity: Tốc độ vô hướng của đạn.
+    position: Vị trí tùy chỉnh (tùy chọn), mặc định dùng vị trí của shooter.
+
+Returns:
+    True nếu đạn được tạo thành công, None nếu băng đạn đầy.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def bulletCollision(self, target):
+Kiểm tra đạn đang hoạt động có trúng mục tiêu không.
+
+Đạn trúng mục tiêu sẽ bị đặt ttl về 0.
+
+Args:
+    target: VectorSprite cần kiểm tra va chạm.
+
+Returns:
+    True nếu ít nhất một viên đạn trúng, False nếu không.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def __init__(self, position, heading, shooter, ttl, velocity, stage):
+Khởi tạo đạn với quỹ đạo và quyền sở hữu.
+
+Args:
+    position: Vị trí spawn, dạng Vector2d.
+    heading: Vector vận tốc, dạng Vector2d.
+    shooter: Instance Shooter sở hữu viên đạn.
+    ttl: Thời gian sống tính bằng frame.
+    velocity: Tốc độ vô hướng của đạn.
+    stage: Instance Stage quản lý sprite.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def move(self):
+Cập nhật vị trí và gỡ khỏi danh sách đạn khi hết hạn.
+
+Last Modified: 2026-05-13
+--------------------
+
+FILE: soundManager.py
+=====================
+[Module]
+Module quản lý âm thanh cho game Asteroids.
+
+Cung cấp các hàm nạp, phát, dừng, và tắt tiếng (mute)
+toàn bộ hiệu ứng âm thanh thông qua pygame.mixer.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def initSoundManager():
+Khởi tạo mixer và nạp toàn bộ file âm thanh từ đĩa.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def toggleMute():
+Bật/tắt trạng thái mute toàn cục.
+
+Khi chuyển sang mute, tất cả âm thanh đang phát sẽ bị dừng ngay.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def playSound(soundName):
+Phát một hiệu ứng âm thanh một lần.
+
+Args:
+    soundName: Khóa định danh âm thanh trong dictionary sounds.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def playSoundContinuous(soundName):
+Phát một hiệu ứng âm thanh lặp liên tục.
+
+Args:
+    soundName: Khóa định danh âm thanh trong dictionary sounds.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def stopSound(soundName):
+Dừng một hiệu ứng âm thanh đang phát.
+
+Args:
+    soundName: Khóa định danh âm thanh trong dictionary sounds.
+
+Last Modified: 2026-05-13
+--------------------
+
+FILE: stage.py
+==============
+[Module]
+Module quản lý Stage cho game Asteroids.
+
+Xử lý pygame display surface, render sprite, cập nhật di chuyển,
+và screen wrapping cho toàn bộ thực thể trong game.
+
+Last Modified: 2026-05-13
+--------------------
+[Class] class Stage:
+Quản lý hiển thị và cập nhật toàn bộ sprite trên màn hình.
+
+Sở hữu pygame display surface và danh sách sprite chính. Xử lý
+render, cập nhật di chuyển, và screen wrapping dạng toroidal.
+
+Attributes:
+    screen: Pygame display surface.
+    spriteList: Danh sách toàn bộ sprite đang hoạt động.
+    width: Độ phân giải ngang tính bằng pixel.
+    height: Độ phân giải dọc tính bằng pixel.
+    showBoundingBoxes: Cờ debug hiển thị viền AABB.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def __init__(self, caption, dimensions):
+Khởi tạo display và hệ thống quản lý sprite.
+
+Args:
+    caption: Tiêu đề cửa sổ.
+    dimensions: Độ phân giải dạng (width, height). Mặc định dùng
+        độ phân giải gốc của màn hình chính.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def addSprite(self, sprite):
+Đăng ký sprite để render và gán bounding rect ban đầu.
+
+Args:
+    sprite: Instance VectorSprite cần thêm.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def removeSprite(self, sprite):
+Gỡ sprite khỏi danh sách render.
+
+Args:
+    sprite: Instance VectorSprite cần gỡ.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def drawSprites(self):
+Render toàn bộ sprite đã đăng ký, tùy chọn vẽ bounding box.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def moveSprites(self):
+Cập nhật vị trí toàn bộ sprite và áp dụng screen wrapping.
+
+Last Modified: 2026-05-13
+--------------------
+
+FILE: dsa/collision.py
+======================
+[Module]
+Hệ thống phát hiện va chạm event-based.
+
+Cung cấp CollisionEvent để mô tả một cặp va chạm có phân loại,
+và CollisionDispatcher để phát hiện → phân loại → dispatch sự kiện
+đến các handler đã đăng ký.
+
+Tất cả thực thể (thiên thạch, tàu, đĩa bay, đạn) đều được chèn
+vào cùng một QuadTree hoặc duyệt brute-force, sau đó phân loại
+theo kiểu cặp va chạm.
+
+Last Modified: 2026-05-13
+--------------------
+[Class] class CollisionEvent:
+Sự kiện va chạm giữa hai thực thể.
+
+Attributes:
+    event_type: Hằng số kiểu va chạm (ROCK_ROCK, BULLET_ROCK, ...).
+    entity_a: Thực thể thứ nhất trong cặp.
+    entity_b: Thực thể thứ hai trong cặp.
+
+Last Modified: 2026-05-13
+--------------------
+[Class] class CollisionDispatcher:
+Phát hiện va chạm và dispatch sự kiện đến handler.
+
+Chèn toàn bộ thực thể vào QuadTree (hoặc list cho brute-force),
+truy vấn candidate cho từng thực thể, phân loại cặp va chạm,
+loại bỏ trùng lặp, rồi gọi handler tương ứng.
+
+Attributes:
+    handlers: Dictionary ánh xạ event_type → callable.
+    screen_width: Chiều rộng màn hình (pixel).
+    screen_height: Chiều cao màn hình (pixel).
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def __init__(self, event_type, entity_a, entity_b):
+Khởi tạo sự kiện va chạm.
+
+Args:
+    event_type: Hằng số kiểu va chạm.
+    entity_a: Thực thể thứ nhất.
+    entity_b: Thực thể thứ hai.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def __init__(self, screen_width, screen_height):
+Khởi tạo dispatcher với kích thước màn hình.
+
+Args:
+    screen_width: Chiều rộng (pixel).
+    screen_height: Chiều cao (pixel).
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def register(self, event_type, handler):
+Đăng ký handler cho một kiểu va chạm.
+
+Args:
+    event_type: Hằng số kiểu va chạm.
+    handler: Callable nhận CollisionEvent làm tham số.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def detect_and_dispatch(self, rocks, ship, saucers, all_bullets, use_quadtree, classify_fn):
+Phát hiện va chạm và dispatch sự kiện.
+
+Args:
+    rocks: Danh sách thiên thạch.
+    ship: Instance Ship người chơi (hoặc None).
+    saucers: Danh sách Saucer đang hoạt động.
+    all_bullets: Danh sách toàn bộ Bullet đang hoạt động.
+    use_quadtree: True dùng QuadTree, False dùng brute-force.
+    classify_fn: Hàm phân loại (entity_a, entity_b) → event_type.
+
+Returns:
+    Tuple (quadtree_instance, all_objects) để caller có thể
+    tái sử dụng cho range query (cluster multiplier).
+
+Last Modified: 2026-05-13
+--------------------
+
+FILE: dsa/pathfinding.py
+========================
+[Module]
+Các thuật toán pathfinding trên lưới cho AI tàu địch.
+
+Cung cấp lớp GridPathfinder với cài đặt BFS và Weighted A* hoạt động
+trên lưới 2D rời rạc hóa.
+- BFS (tàu Trung Bình): Tìm đường ngắn nhất trên lưới nhị phân (0/1).
+- Weighted A* (tàu Khó): Tìm đường an toàn nhất trên bản đồ nhiệt
+  nguy hiểm (danger heatmap) với chi phí liên tục, ưu tiên né xa
+  vùng nguy hiểm thay vì chỉ né chướng ngại vật trực tiếp.
+
+Last Modified: 2026-05-13
+--------------------
+[Class] class GridPathfinder:
+Pathfinder trên lưới rời rạc với BFS và Weighted A*.
+
+- build_grid(): Lưới nhị phân cho BFS (blocked/unblocked).
+- build_heatmap(): Bản đồ nhiệt nguy hiểm cho Weighted A*,
+  mỗi ô mang chi phí liên tục tỷ lệ nghịch với khoảng cách
+  đến nguồn nguy hiểm gần nhất.
+
+Attributes:
+    width: Chiều rộng world (pixel).
+    height: Chiều cao world (pixel).
+    cell_size: Kích thước ô lưới (pixel).
+    cols: Số cột trong lưới.
+    rows: Số hàng trong lưới.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def __init__(self, width, height, cell_size):
+Khởi tạo kích thước lưới pathfinder.
+
+Args:
+    width: Chiều rộng world (pixel).
+    height: Chiều cao world (pixel).
+    cell_size: Kích thước ô lưới (pixel). Mặc định 40.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def _mark_danger(self, grid, cx, cy, value):
+Đánh dấu một ô trên lưới với giá trị tối đa.
+
+Args:
+    grid: Mảng 2D lưới.
+    cx: Chỉ số cột.
+    cy: Chỉ số hàng.
+    value: Giá trị chi phí cần gán (giữ lại giá trị lớn hơn).
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def build_grid(self, rocks, bullets, saucer_bullet_list):
+Xây dựng lưới nhị phân cho BFS (0 = đi được, 1 = blocked).
+
+Đánh dấu vị trí hiện tại và quỹ đạo dự đoán của thiên thạch
+và đạn người chơi (có xử lý screen wrapping).
+
+Args:
+    rocks: Danh sách instance Rock.
+    bullets: Danh sách toàn bộ Bullet đang hoạt động.
+    saucer_bullet_list: Đạn của đĩa bay (loại trừ khỏi đánh dấu).
+
+Returns:
+    Mảng 2D với grid[col][row] = 1 (blocked) hoặc 0 (đi được).
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def build_heatmap(self, rocks, bullets, saucer_bullet_list):
+Xây dựng bản đồ nhiệt nguy hiểm cho Weighted A*.
+
+Thay vì nhị phân (0/1), mỗi ô mang chi phí liên tục:
+- IMPASSABLE (999): Vị trí hiện tại của vật thể (không đi qua).
+- Chi phí cao: Ô nằm trên quỹ đạo dự đoán hoặc lân cận nguồn
+  nguy hiểm (giảm dần theo khoảng cách).
+- BASE_COST (1): Ô an toàn.
+
+Điều này khiến Weighted A* chủ động né xa vùng nguy hiểm
+thay vì chỉ tránh ô bị blocked.
+
+Args:
+    rocks: Danh sách instance Rock.
+    bullets: Danh sách toàn bộ Bullet đang hoạt động.
+    saucer_bullet_list: Đạn của đĩa bay (loại trừ).
+
+Returns:
+    Mảng 2D với grid[col][row] = chi phí đi qua ô đó (float).
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def get_neighbors(self, grid, x, y):
+Trả về các ô lân cận đi được theo 8 hướng (cho BFS, lưới nhị phân).
+
+Args:
+    grid: Lưới nhị phân từ build_grid.
+    x: Chỉ số cột ô hiện tại.
+    y: Chỉ số hàng ô hiện tại.
+
+Returns:
+    Danh sách tuple (col, row) các ô lân cận có giá trị 0.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def get_weighted_neighbors(self, heatmap, x, y):
+Trả về các ô lân cận đi được kèm chi phí (cho Weighted A*).
+
+Ô có chi phí >= IMPASSABLE được coi là không đi qua được.
+
+Args:
+    heatmap: Bản đồ nhiệt từ build_heatmap.
+    x: Chỉ số cột ô hiện tại.
+    y: Chỉ số hàng ô hiện tại.
+
+Returns:
+    Danh sách tuple (col, row, cost) các ô lân cận đi được.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def weighted_astar(self, heatmap, start_pos, target_pos):
+Tìm đường an toàn nhất bằng Weighted A* trên danger heatmap.
+
+Khác với A* nhị phân, chi phí di chuyển qua mỗi ô bằng giá trị
+heatmap tại ô đó. Đường đi tối ưu cân bằng giữa khoảng cách
+ngắn nhất và mức nguy hiểm tích lũy thấp nhất.
+
+Args:
+    heatmap: Bản đồ nhiệt từ build_heatmap.
+    start_pos: Vị trí bắt đầu, dạng Vector2d (world-space).
+    target_pos: Vị trí mục tiêu, dạng Vector2d (world-space).
+
+Returns:
+    Waypoint tiếp theo dạng Vector2d, hoặc None.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def bfs(self, grid, start_pos, target_pos):
+Tìm đường ngắn nhất bằng BFS trên lưới nhị phân.
+
+Args:
+    grid: Lưới nhị phân từ build_grid.
+    start_pos: Vị trí bắt đầu, dạng Vector2d (world-space).
+    target_pos: Vị trí mục tiêu, dạng Vector2d (world-space).
+
+Returns:
+    Waypoint tiếp theo dạng Vector2d, hoặc None.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def spread_danger(cx, cy, core_cost, radius):
+Lan tỏa chi phí nguy hiểm từ tâm ra các ô lân cận.
+
+Args:
+    cx: Tọa độ x của ô trung tâm.
+    cy: Tọa độ y của ô trung tâm.
+    core_cost: Chi phí tại ô trung tâm.
+    radius: Bán kính lan tỏa (số ô).
+
+Last Modified: 2026-05-13
+--------------------
+
+FILE: dsa/quadtree.py
+=====================
+[Module]
+QuadTree phân vùng không gian cho phát hiện va chạm.
+
+Cung cấp cấu trúc dữ liệu QuadTree đệ quy chia không gian 2D
+thành các phần tư, cho phép truy vấn va chạm broad-phase O(n log n)
+thay vì brute-force O(n^2).
+
+Last Modified: 2026-05-13
+--------------------
+[Class] class QuadTree:
+Chỉ mục không gian đệ quy phân vùng 2D thành bốn phần tư.
+
+Các đối tượng được lưu tại node lá với sức chứa cấu hình được.
+Khi vượt sức chứa, node chia thành bốn con (NE, NW, SE, SW)
+và phân phối đối tượng tương ứng.
+
+Attributes:
+    boundary: pygame.Rect xác định vùng không gian của node.
+    capacity: Số đối tượng tối đa trước khi chia nhỏ.
+    objects: Danh sách sprite lưu tại node này.
+    divided: Node đã được chia nhỏ hay chưa.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def __init__(self, boundary, capacity):
+Khởi tạo node QuadTree với boundary cho trước.
+
+Args:
+    boundary: pygame.Rect xác định vùng không gian.
+    capacity: Số đối tượng tối đa trước khi chia. Mặc định 4.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def subdivide(self):
+Chia node thành bốn phần tư bằng nhau (NE, NW, SE, SW).
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def insert(self, obj):
+Chèn sprite vào cây dựa trên bounding rect.
+
+Nếu node đã đầy, chia nhỏ trước rồi chèn vào phần tư phù hợp.
+
+Args:
+    obj: Sprite có thuộc tính ``rect`` để định vị không gian.
+
+Returns:
+    True nếu chèn thành công, False nếu nằm ngoài boundary.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def query(self, range_rect, found):
+Truy vấn các đối tượng có bounding rect giao với vùng tìm kiếm.
+
+Tìm kiếm đệ quy các phần tư con giao với hình chữ nhật truy vấn.
+
+Args:
+    range_rect: pygame.Rect xác định vùng tìm kiếm.
+    found: Danh sách đầu ra, đối tượng tìm thấy được append vào.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def get_potential_intersections(self, target):
+Trả về các đối tượng cùng vùng phân vùng với target.
+
+Wrapper tiện ích cho query() sử dụng bounding rect của target.
+
+Args:
+    target: Sprite có thuộc tính ``rect``.
+
+Returns:
+    Danh sách sprite nằm cùng vùng không gian với target.
+
+Last Modified: 2026-05-13
+--------------------
+
+FILE: util/__init__.py
+======================
+[Module]
+Các tiện ích hỗ trợ cho game.
+
+Last Modified: 2026-05-13
+--------------------
+
+FILE: util/geometry.py
+======================
+[Module]
+Các hàm tiện ích hình học cho bài toán giao điểm đoạn thẳng.
+
+Cung cấp các hàm tính hệ số góc, tung độ gốc, và xác định
+giao điểm giữa hai đoạn thẳng bằng phương pháp giải tích.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def calculateGradient(p1, p2):
+Tính hệ số góc (gradient) của đường thẳng đi qua hai điểm.
+
+Args:
+    p1: Điểm thứ nhất, dạng tuple (x, y).
+    p2: Điểm thứ hai, dạng tuple (x, y).
+
+Returns:
+    Hệ số góc dạng float, hoặc None nếu đường thẳng đứng.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def calculateYAxisIntersect(p, m):
+Tính tung độ gốc (y-intercept) của đường thẳng.
+
+Args:
+    p: Một điểm trên đường thẳng, dạng tuple (x, y).
+    m: Hệ số góc của đường thẳng.
+
+Returns:
+    Giá trị tung độ gốc (b) dạng float.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def getIntersectPoint(p1, p2, p3, p4):
+Tìm giao điểm của hai đường thẳng kéo dài vô hạn.
+
+Đường thẳng thứ nhất xác định bởi p1, p2; đường thứ hai bởi p3, p4.
+Xử lý các trường hợp đường thẳng đứng và đường song song.
+
+Args:
+    p1: Điểm đầu đường thẳng 1.
+    p2: Điểm cuối đường thẳng 1.
+    p3: Điểm đầu đường thẳng 2.
+    p4: Điểm cuối đường thẳng 2.
+
+Returns:
+    Tuple chứa tọa độ giao điểm, hoặc None nếu hai đường song song
+    và không trùng nhau.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def calculateIntersectPoint(p1, p2, p3, p4):
+Kiểm tra giao điểm có nằm trong phạm vi của hai đoạn thẳng hữu hạn.
+
+Mở rộng getIntersectPoint bằng cách xác nhận giao điểm tính được
+nằm trong hình chữ nhật bao (bounding rect) của cả hai đoạn thẳng.
+
+Args:
+    p1: Điểm đầu đoạn thẳng 1.
+    p2: Điểm cuối đoạn thẳng 1.
+    p3: Điểm đầu đoạn thẳng 2.
+    p4: Điểm cuối đoạn thẳng 2.
+
+Returns:
+    Giao điểm dạng list [x, y], hoặc None nếu hai đoạn không giao nhau.
+
+Last Modified: 2026-05-13
+--------------------
+
+FILE: util/vectorsprites.py
+===========================
+[Module]
+Các lớp sprite dạng vector và các primitive phát hiện va chạm.
+
+Cung cấp các lớp cơ sở cho mọi thực thể đa giác trong game, bao gồm
+phép xoay, tịnh tiến, di chuyển, co giãn, và phát hiện va chạm bằng
+bounding-rectangle và line-segment intersection.
+
+Last Modified: 2026-05-13
+--------------------
+[Class] class VectorSprite:
+Lớp cơ sở cho các sprite đa giác hỗ trợ xoay và tịnh tiến.
+
+Quản lý vị trí, vận tốc, vận tốc góc, và cung cấp các phương thức
+biến đổi đỉnh đa giác, render, di chuyển, và phát hiện va chạm.
+
+Attributes:
+    position: Tọa độ world-space hiện tại, dạng Vector2d.
+    heading: Vector vận tốc, dạng Vector2d.
+    angle: Góc xoay hiện tại tính bằng độ.
+    vAngle: Vận tốc góc (độ/frame).
+    pointlist: Danh sách đỉnh đa giác gốc (tọa độ local-space).
+    color: Tuple màu RGB dùng để render.
+    ttl: Số frame còn lại trước khi tự hủy.
+
+Last Modified: 2026-05-13
+--------------------
+[Class] class Point(VectorSprite):
+Sprite tối giản dạng pixel đơn, dùng cho đạn và hạt hiệu ứng.
+
+Tự động gỡ bỏ khỏi Stage khi hết thời gian sống (ttl).
+
+Attributes:
+    stage: Instance Stage quản lý sprite này.
+    ttl: Số frame còn lại trước khi tự hủy.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def __init__(self, position, heading, pointlist, angle, color):
+Khởi tạo sprite với vị trí, vận tốc, và hình dạng đa giác.
+
+Args:
+    position: Vị trí world-space ban đầu, dạng Vector2d.
+    heading: Vector vận tốc ban đầu, dạng Vector2d.
+    pointlist: Danh sách tuple (x, y) xác định các đỉnh đa giác.
+    angle: Góc xoay ban đầu tính bằng độ. Mặc định 0.
+    color: Tuple màu RGB. Mặc định trắng (255, 255, 255).
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def rotateAndTransform(self):
+Áp dụng phép xoay và tịnh tiến lên toàn bộ đỉnh đa giác.
+
+Lưu kết quả tọa độ screen-space vào ``self.transformedPointlist``.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def draw(self):
+Tính toán các đỉnh đã biến đổi để render.
+
+Returns:
+    Danh sách tọa độ đỉnh trong screen-space.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def translatePoint(self, point):
+Tịnh tiến một điểm từ local-space sang world-space.
+
+Args:
+    point: Tọa độ local-space dạng (x, y).
+
+Returns:
+    Điểm đã tịnh tiến dạng list [x, y].
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def move(self):
+Cập nhật vị trí theo vector vận tốc và cập nhật góc xoay.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def rotatePoint(self, point):
+Xoay một điểm quanh gốc tọa độ theo góc hiện tại.
+
+Args:
+    point: Tọa độ local-space dạng (x, y).
+
+Returns:
+    Điểm đã xoay dạng list [x, y], làm tròn xuống số nguyên.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def scale(self, point, scale):
+Co giãn một điểm theo hệ số tỷ lệ đồng nhất.
+
+Args:
+    point: Tọa độ dạng (x, y).
+    scale: Hệ số co giãn.
+
+Returns:
+    Điểm đã co giãn dạng list [x, y], làm tròn xuống số nguyên.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def collidesWith(self, target):
+Kiểm tra chồng lấn bounding box (AABB) với sprite khác.
+
+Args:
+    target: VectorSprite cần kiểm tra.
+
+Returns:
+    True nếu hai bounding rectangle chồng lấn, False nếu không.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def checkPolygonCollision(self, target):
+Kiểm tra va chạm đa giác chính xác bằng line-segment intersection.
+
+Duyệt qua tất cả các cặp cạnh giữa sprite này và target
+để tìm điểm giao nhau.
+
+Args:
+    target: VectorSprite cần kiểm tra.
+
+Returns:
+    Điểm giao nhau dạng [x, y] nếu tìm thấy, hoặc None.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def __init__(self, position, heading, stage):
+Khởi tạo Point sprite.
+
+Args:
+    position: Vị trí world-space, dạng Vector2d.
+    heading: Vector vận tốc, dạng Vector2d.
+    stage: Instance Stage quản lý sprite.
+
+Last Modified: 2026-05-13
+--------------------
+[Function/Method] def move(self):
+Cập nhật vị trí và giảm thời gian sống.
+
+Gỡ sprite khỏi Stage khi ttl về 0.
+
+Last Modified: 2026-05-13
+--------------------
+

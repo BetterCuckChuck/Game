@@ -4,7 +4,7 @@ Module quản lý âm thanh cho game Asteroids.
 Cung cấp các hàm nạp, phát, dừng, và tắt tiếng (mute)
 toàn bộ hiệu ứng âm thanh thông qua pygame.mixer.
 
-Last Modified: 2026-05-06
+Last Modified: 2026-05-13
 """
 
 import pygame
@@ -12,6 +12,7 @@ import sys
 import os
 import random
 from pygame.locals import *
+from res_path import resource_path
 
 sounds = {}  
 
@@ -22,18 +23,18 @@ def initSoundManager():
     """
     Khởi tạo mixer và nạp toàn bộ file âm thanh từ đĩa.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
     pygame.mixer.init()
-    sounds["fire"] = pygame.mixer.Sound("../res/FIRE.WAV")
-    sounds["explode1"] = pygame.mixer.Sound("../res/EXPLODE1.WAV")
-    sounds["explode2"] = pygame.mixer.Sound("../res/EXPLODE2.WAV")
-    sounds["explode3"] = pygame.mixer.Sound("../res/EXPLODE3.WAV")
-    sounds["lsaucer"] = pygame.mixer.Sound("../res/LSAUCER.WAV")
-    sounds["ssaucer"] = pygame.mixer.Sound("../res/SSAUCER.WAV")
-    sounds["thrust"] = pygame.mixer.Sound("../res/THRUST.WAV")
-    sounds["sfire"] = pygame.mixer.Sound("../res/SFIRE.WAV")
-    sounds["extralife"] = pygame.mixer.Sound("../res/LIFE.WAV")
+    sounds["fire"] = pygame.mixer.Sound(resource_path("FIRE.WAV"))
+    sounds["explode1"] = pygame.mixer.Sound(resource_path("EXPLODE1.WAV"))
+    sounds["explode2"] = pygame.mixer.Sound(resource_path("EXPLODE2.WAV"))
+    sounds["explode3"] = pygame.mixer.Sound(resource_path("EXPLODE3.WAV"))
+    sounds["lsaucer"] = pygame.mixer.Sound(resource_path("LSAUCER.WAV"))
+    sounds["ssaucer"] = pygame.mixer.Sound(resource_path("SSAUCER.WAV"))
+    sounds["thrust"] = pygame.mixer.Sound(resource_path("THRUST.WAV"))
+    sounds["sfire"] = pygame.mixer.Sound(resource_path("SFIRE.WAV"))
+    sounds["extralife"] = pygame.mixer.Sound(resource_path("LIFE.WAV"))
 
 
 def toggleMute():
@@ -42,7 +43,7 @@ def toggleMute():
 
     Khi chuyển sang mute, tất cả âm thanh đang phát sẽ bị dừng ngay.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
     global is_muted
     is_muted = not is_muted
@@ -58,7 +59,7 @@ def playSound(soundName):
     Args:
         soundName: Khóa định danh âm thanh trong dictionary sounds.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
     if not is_muted:
         channel = sounds[soundName].play()
@@ -71,7 +72,7 @@ def playSoundContinuous(soundName):
     Args:
         soundName: Khóa định danh âm thanh trong dictionary sounds.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
     if not is_muted:
         channel = sounds[soundName].play(-1)
@@ -84,6 +85,6 @@ def stopSound(soundName):
     Args:
         soundName: Khóa định danh âm thanh trong dictionary sounds.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
     channel = sounds[soundName].stop()

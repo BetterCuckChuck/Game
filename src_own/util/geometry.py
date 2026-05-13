@@ -4,7 +4,7 @@ Các hàm tiện ích hình học cho bài toán giao điểm đoạn thẳng.
 Cung cấp các hàm tính hệ số góc, tung độ gốc, và xác định
 giao điểm giữa hai đoạn thẳng bằng phương pháp giải tích.
 
-Last Modified: 2026-05-06
+Last Modified: 2026-05-13
 """
 
 from pygame import Rect
@@ -21,7 +21,7 @@ def calculateGradient(p1, p2):
     Returns:
         Hệ số góc dạng float, hoặc None nếu đường thẳng đứng.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
     if (p1[0] != p2[0]):
         m = (p1[1] - p2[1]) / (p1[0] - p2[0])
@@ -41,7 +41,7 @@ def calculateYAxisIntersect(p, m):
     Returns:
         Giá trị tung độ gốc (b) dạng float.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
     return p[1] - (m * p[0])
 
@@ -63,7 +63,7 @@ def getIntersectPoint(p1, p2, p3, p4):
         Tuple chứa tọa độ giao điểm, hoặc None nếu hai đường song song
         và không trùng nhau.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
     m1 = calculateGradient(p1, p2)
     m2 = calculateGradient(p3, p4)
@@ -118,7 +118,7 @@ def calculateIntersectPoint(p1, p2, p3, p4):
     Returns:
         Giao điểm dạng list [x, y], hoặc None nếu hai đoạn không giao nhau.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
     p = getIntersectPoint(p1, p2, p3, p4)
 

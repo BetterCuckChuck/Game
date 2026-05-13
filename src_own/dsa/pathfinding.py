@@ -8,7 +8,7 @@ trên lưới 2D rời rạc hóa.
   nguy hiểm (danger heatmap) với chi phí liên tục, ưu tiên né xa
   vùng nguy hiểm thay vì chỉ né chướng ngại vật trực tiếp.
 
-Last Modified: 2026-05-06
+Last Modified: 2026-05-13
 """
 
 import math
@@ -38,7 +38,7 @@ class GridPathfinder:
         cols: Số cột trong lưới.
         rows: Số hàng trong lưới.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
 
     def __init__(self, width, height, cell_size=40):
@@ -50,7 +50,7 @@ class GridPathfinder:
             height: Chiều cao world (pixel).
             cell_size: Kích thước ô lưới (pixel). Mặc định 40.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.width = width
         self.height = height
@@ -68,7 +68,7 @@ class GridPathfinder:
             cy: Chỉ số hàng.
             value: Giá trị chi phí cần gán (giữ lại giá trị lớn hơn).
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if 0 <= cx < self.cols and 0 <= cy < self.rows:
             grid[cx][cy] = max(grid[cx][cy], value)
@@ -88,7 +88,7 @@ class GridPathfinder:
         Returns:
             Mảng 2D với grid[col][row] = 1 (blocked) hoặc 0 (đi được).
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         grid = [[0 for _ in range(self.rows)] for _ in range(self.cols)]
         for rock in rocks:
@@ -131,15 +131,21 @@ class GridPathfinder:
         Returns:
             Mảng 2D với grid[col][row] = chi phí đi qua ô đó (float).
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         grid = [[BASE_COST for _ in range(self.rows)] for _ in range(self.cols)]
 
         def spread_danger(cx, cy, core_cost, radius=2):
             """
             Lan tỏa chi phí nguy hiểm từ tâm ra các ô lân cận.
+            
+            Args:
+                cx: Tọa độ x của ô trung tâm.
+                cy: Tọa độ y của ô trung tâm.
+                core_cost: Chi phí tại ô trung tâm.
+                radius: Bán kính lan tỏa (số ô).
 
-            Last Modified: 2026-05-06
+            Last Modified: 2026-05-13
             """
             self._mark_danger(grid, cx, cy, core_cost)
             for dr in range(-radius, radius + 1):
@@ -187,7 +193,7 @@ class GridPathfinder:
         Returns:
             Danh sách tuple (col, row) các ô lân cận có giá trị 0.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         neighbors = []
         for dx, dy in [(0,1),(1,0),(0,-1),(-1,0),(1,1),(-1,-1),(1,-1),(-1,1)]:
@@ -210,7 +216,7 @@ class GridPathfinder:
         Returns:
             Danh sách tuple (col, row, cost) các ô lân cận đi được.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         neighbors = []
         for dx, dy in [(0,1),(1,0),(0,-1),(-1,0),(1,1),(-1,-1),(1,-1),(-1,1)]:
@@ -237,7 +243,7 @@ class GridPathfinder:
         Returns:
             Waypoint tiếp theo dạng Vector2d, hoặc None.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         sx = max(0, min(self.cols - 1, int(start_pos.x / self.cell_size)))
         sy = max(0, min(self.rows - 1, int(start_pos.y / self.cell_size)))
@@ -299,7 +305,7 @@ class GridPathfinder:
         Returns:
             Waypoint tiếp theo dạng Vector2d, hoặc None.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         sx = max(0, min(self.cols - 1, int(start_pos.x / self.cell_size)))
         sy = max(0, min(self.rows - 1, int(start_pos.y / self.cell_size)))

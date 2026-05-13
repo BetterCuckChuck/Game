@@ -9,7 +9,7 @@ Tất cả thực thể (thiên thạch, tàu, đĩa bay, đạn) đều đượ
 vào cùng một QuadTree hoặc duyệt brute-force, sau đó phân loại
 theo kiểu cặp va chạm.
 
-Last Modified: 2026-05-06
+Last Modified: 2026-05-13
 """
 
 import pygame
@@ -35,7 +35,7 @@ class CollisionEvent:
         entity_a: Thực thể thứ nhất trong cặp.
         entity_b: Thực thể thứ hai trong cặp.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
     __slots__ = ('event_type', 'entity_a', 'entity_b')
 
@@ -48,7 +48,7 @@ class CollisionEvent:
             entity_a: Thực thể thứ nhất.
             entity_b: Thực thể thứ hai.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.event_type = event_type
         self.entity_a = entity_a
@@ -68,7 +68,7 @@ class CollisionDispatcher:
         screen_width: Chiều rộng màn hình (pixel).
         screen_height: Chiều cao màn hình (pixel).
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
 
     def __init__(self, screen_width, screen_height):
@@ -79,7 +79,7 @@ class CollisionDispatcher:
             screen_width: Chiều rộng (pixel).
             screen_height: Chiều cao (pixel).
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.handlers = {}
         self.screen_width = screen_width
@@ -93,7 +93,7 @@ class CollisionDispatcher:
             event_type: Hằng số kiểu va chạm.
             handler: Callable nhận CollisionEvent làm tham số.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if event_type not in self.handlers:
             self.handlers[event_type] = []
@@ -116,7 +116,7 @@ class CollisionDispatcher:
             Tuple (quadtree_instance, all_objects) để caller có thể
             tái sử dụng cho range query (cluster multiplier).
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         all_objects = list(rocks)
         if ship:

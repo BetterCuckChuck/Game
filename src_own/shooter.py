@@ -4,7 +4,7 @@ Lớp cơ sở Shooter và lớp đạn Bullet.
 Định nghĩa mixin Shooter cho các thực thể có khả năng bắn đạn,
 và lớp Bullet đại diện cho từng viên đạn riêng lẻ.
 
-Last Modified: 2026-05-06
+Last Modified: 2026-05-13
 """
 
 import random
@@ -23,7 +23,7 @@ class Shooter(VectorSprite):
         bullets: Danh sách các instance Bullet đang hoạt động.
         stage: Instance Stage quản lý sprite.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
 
     def __init__(self, position, heading, pointlist, stage):
@@ -36,7 +36,7 @@ class Shooter(VectorSprite):
             pointlist: Danh sách đỉnh đa giác xác định hình dạng.
             stage: Instance Stage quản lý sprite.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         VectorSprite.__init__(self, position, heading, pointlist)
         self.bullets = []
@@ -55,7 +55,7 @@ class Shooter(VectorSprite):
         Returns:
             True nếu đạn được tạo thành công, None nếu băng đạn đầy.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if (len(self.bullets) < self.maxBullets):
             if position is None:
@@ -82,7 +82,7 @@ class Shooter(VectorSprite):
         Returns:
             True nếu ít nhất một viên đạn trúng, False nếu không.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         collisionDetected = False
         for bullet in self.bullets:
@@ -106,7 +106,7 @@ class Bullet(Point):
         ttl: Số frame còn lại trước khi hết hạn.
         velocity: Tốc độ vô hướng của đạn.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
     pointlist = [(-1, -1), (1, -1), (1, 1), (-1, 1)]
 
@@ -122,7 +122,7 @@ class Bullet(Point):
             velocity: Tốc độ vô hướng của đạn.
             stage: Instance Stage quản lý sprite.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         Point.__init__(self, position, heading, stage)
         self.shooter = shooter
@@ -134,7 +134,7 @@ class Bullet(Point):
         """
         Cập nhật vị trí và gỡ khỏi danh sách đạn khi hết hạn.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         Point.move(self)
         if (self.ttl <= 0):

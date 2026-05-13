@@ -5,7 +5,7 @@ Cung cấp các lớp cơ sở cho mọi thực thể đa giác trong game, bao 
 phép xoay, tịnh tiến, di chuyển, co giãn, và phát hiện va chạm bằng
 bounding-rectangle và line-segment intersection.
 
-Last Modified: 2026-05-06
+Last Modified: 2026-05-13
 """
 
 #    This program is free software: you can redistribute it and/or modify
@@ -45,7 +45,7 @@ class VectorSprite:
         color: Tuple màu RGB dùng để render.
         ttl: Số frame còn lại trước khi tự hủy.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
 
     def __init__(self, position, heading, pointlist, angle=0, color=(255, 255, 255)):
@@ -59,7 +59,7 @@ class VectorSprite:
             angle: Góc xoay ban đầu tính bằng độ. Mặc định 0.
             color: Tuple màu RGB. Mặc định trắng (255, 255, 255).
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.position = position
         self.heading = heading
@@ -76,7 +76,7 @@ class VectorSprite:
 
         Lưu kết quả tọa độ screen-space vào ``self.transformedPointlist``.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         newPointList = [self.rotatePoint(point) for point in self.pointlist]
         self.transformedPointlist = [
@@ -89,7 +89,7 @@ class VectorSprite:
         Returns:
             Danh sách tọa độ đỉnh trong screen-space.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.rotateAndTransform()
         return self.transformedPointlist
@@ -104,7 +104,7 @@ class VectorSprite:
         Returns:
             Điểm đã tịnh tiến dạng list [x, y].
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         newPoint = []
         newPoint.append(point[0] + self.position.x)
@@ -115,7 +115,7 @@ class VectorSprite:
         """
         Cập nhật vị trí theo vector vận tốc và cập nhật góc xoay.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.position.x = self.position.x + self.heading.x
         self.position.y = self.position.y + self.heading.y
@@ -132,7 +132,7 @@ class VectorSprite:
         Returns:
             Điểm đã xoay dạng list [x, y], làm tròn xuống số nguyên.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         newPoint = []
         cosVal = math.cos(radians(self.angle))
@@ -154,7 +154,7 @@ class VectorSprite:
         Returns:
             Điểm đã co giãn dạng list [x, y], làm tròn xuống số nguyên.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         newPoint = []
         newPoint.append(point[0] * scale)
@@ -172,7 +172,7 @@ class VectorSprite:
         Returns:
             True nếu hai bounding rectangle chồng lấn, False nếu không.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if self.rect.colliderect(target.rect):
             return True
@@ -192,7 +192,7 @@ class VectorSprite:
         Returns:
             Điểm giao nhau dạng [x, y] nếu tìm thấy, hoặc None.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         for i in range(0, len(self.transformedPointlist)):
             for j in range(0, len(target.transformedPointlist)):
@@ -218,7 +218,7 @@ class Point(VectorSprite):
         stage: Instance Stage quản lý sprite này.
         ttl: Số frame còn lại trước khi tự hủy.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
     pointlist = [(0, 0), (1, 1), (1, 0), (0, 1)]
 
@@ -231,7 +231,7 @@ class Point(VectorSprite):
             heading: Vector vận tốc, dạng Vector2d.
             stage: Instance Stage quản lý sprite.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         VectorSprite.__init__(self, position, heading, self.pointlist)
         self.stage = stage
@@ -243,7 +243,7 @@ class Point(VectorSprite):
 
         Gỡ sprite khỏi Stage khi ttl về 0.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.ttl -= 1
         if (self.ttl <= 0):

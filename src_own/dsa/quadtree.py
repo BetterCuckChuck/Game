@@ -5,7 +5,7 @@ Cung cấp cấu trúc dữ liệu QuadTree đệ quy chia không gian 2D
 thành các phần tư, cho phép truy vấn va chạm broad-phase O(n log n)
 thay vì brute-force O(n^2).
 
-Last Modified: 2026-05-06
+Last Modified: 2026-05-13
 """
 
 import pygame
@@ -25,7 +25,7 @@ class QuadTree:
         objects: Danh sách sprite lưu tại node này.
         divided: Node đã được chia nhỏ hay chưa.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
 
     def __init__(self, boundary, capacity=4):
@@ -36,7 +36,7 @@ class QuadTree:
             boundary: pygame.Rect xác định vùng không gian.
             capacity: Số đối tượng tối đa trước khi chia. Mặc định 4.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.boundary = boundary
         self.capacity = capacity
@@ -47,7 +47,7 @@ class QuadTree:
         """
         Chia node thành bốn phần tư bằng nhau (NE, NW, SE, SW).
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         x, y, w, h = self.boundary.x, self.boundary.y, self.boundary.w, self.boundary.h
         hw, hh = w / 2, h / 2
@@ -69,7 +69,7 @@ class QuadTree:
         Returns:
             True nếu chèn thành công, False nếu nằm ngoài boundary.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if not self.boundary.colliderect(obj.rect):
             return False
@@ -93,7 +93,7 @@ class QuadTree:
             range_rect: pygame.Rect xác định vùng tìm kiếm.
             found: Danh sách đầu ra, đối tượng tìm thấy được append vào.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if not self.boundary.colliderect(range_rect):
             return
@@ -119,7 +119,7 @@ class QuadTree:
         Returns:
             Danh sách sprite nằm cùng vùng không gian với target.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         found = []
         self.query(target.rect, found)

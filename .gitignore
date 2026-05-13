@@ -4,3 +4,6 @@ __pycache__/
 src/
 description.md
 readme.md
+dist/
+build/
+asteroids.spec

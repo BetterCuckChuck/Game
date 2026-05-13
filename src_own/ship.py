@@ -5,7 +5,7 @@ Cung cấp lớp Ship cho tàu vũ trụ do người chơi điều khiển với
 hệ thống đẩy, xoay, hyperspace, và vũ khí, cùng lớp ThrustJet
 cho hiệu ứng khí xả động cơ.
 
-Last Modified: 2026-05-06
+Last Modified: 2026-05-13
 """
 
 import random
@@ -13,6 +13,7 @@ from util.vectorsprites import *
 from shooter import *
 from math import *
 from soundManager import *
+from config import load_config
 
 
 class Ship(Shooter):
@@ -31,7 +32,7 @@ class Ship(Shooter):
         visible: Tàu có đang được render hay không.
         inHyperSpace: Tàu có đang trong trạng thái hyperspace (bất tử) hay không.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
     acceleration = 0.27
     decelaration = -0.008
@@ -43,13 +44,20 @@ class Ship(Shooter):
 
     def __init__(self, stage):
         """
-        Khởi tạo tàu tại tâm màn hình với cấu hình mặc định.
+        Khởi tạo tàu tại tâm màn hình với cấu hình động từ config.
 
         Args:
             stage: Instance Stage quản lý sprite.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
+        cfg = load_config()
+        self.acceleration = cfg.get("ship_acceleration", 0.27)
+        self.maxVelocity = cfg.get("ship_max_velocity", 10.0)
+        self.turnAngle = cfg.get("ship_turn_angle", 6.5)
+        self.bulletVelocity = cfg.get("ship_bullet_velocity", 18.0)
+        self.maxBullets = cfg.get("ship_max_bullets", 100)
+
         position = Vector2d(stage.width/2, stage.height/2)
         heading = Vector2d(0, 0)
         self.thrustJet = ThrustJet(stage, self)
@@ -74,7 +82,7 @@ class Ship(Shooter):
         Returns:
             Danh sách các đỉnh đa giác đã biến đổi.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if self.visible:
             if not self.inHyperSpace:
@@ -101,7 +109,7 @@ class Ship(Shooter):
         """
         Xoay tàu ngược chiều kim đồng hồ một góc turnAngle.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.angle += self.turnAngle
         self.thrustJet.angle += self.turnAngle
@@ -110,7 +118,7 @@ class Ship(Shooter):
         """
         Xoay tàu theo chiều kim đồng hồ một góc turnAngle.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.angle -= self.turnAngle
         self.thrustJet.angle -= self.turnAngle
@@ -121,7 +129,7 @@ class Ship(Shooter):
 
         Lực đẩy bị giới hạn tại maxVelocity. Phát âm thanh thrust.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         playSoundContinuous("thrust")
         if math.hypot(self.heading.x, self.heading.y) > self.maxVelocity:
@@ -137,7 +145,7 @@ class Ship(Shooter):
 
         Dừng âm thanh thrust khi được gọi.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         stopSound("thrust")
         if (self.heading.x == 0 and self.heading.y == 0):
@@ -155,7 +163,7 @@ class Ship(Shooter):
             dx: Lượng thay đổi vận tốc theo trục ngang.
             dy: Lượng thay đổi vận tốc theo trục dọc.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         self.heading.x += dx
         self.heading.y += dy
@@ -166,7 +174,7 @@ class Ship(Shooter):
         """
         Cập nhật vị trí, áp dụng ma sát giảm tốc, và tick cooldown.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         VectorSprite.move(self)
         self.decreaseThrust()
@@ -186,7 +194,7 @@ class Ship(Shooter):
         """
         Phân rã tàu thành các mảnh vụn riêng lẻ theo từng cạnh.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         pointlist = [(0, -9), (5, 9)]
         self.addShipDebris(pointlist)
@@ -210,7 +218,7 @@ class Ship(Shooter):
         Args:
             pointlist: Danh sách hai điểm xác định cạnh.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         heading = Vector2d(0, 0)
         position = Vector2d(self.position.x, self.position.y)
@@ -236,7 +244,7 @@ class Ship(Shooter):
         Hỗ trợ nhiều cấp độ đạn song song (Multi-Fire).
         Không bắn được khi đang trong trạng thái hyperspace.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if self.inHyperSpace:
             return
@@ -277,7 +285,7 @@ class Ship(Shooter):
         Returns:
             True nếu burst thành công, False nếu đang cooldown.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if self.inHyperSpace or self.burstCooldown > 0:
             return False
@@ -320,7 +328,7 @@ class Ship(Shooter):
         Tàu xuất hiện lại tại vị trí ngẫu nhiên sau khi hết thời gian
         hyperspace.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if not self.inHyperSpace:
             self.inHyperSpace = True
@@ -340,7 +348,7 @@ class ThrustJet(VectorSprite):
         accelerating: Động cơ có đang hoạt động hay không.
         ship: Tham chiếu đến instance Ship gốc.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
     pointlist = [(-3, 7), (0, 13), (3, 7)]
 
@@ -352,7 +360,7 @@ class ThrustJet(VectorSprite):
             stage: Instance Stage quản lý sprite.
             ship: Instance Ship gốc.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         position = Vector2d(stage.width/2, stage.height/2)
         heading = Vector2d(0, 0)
@@ -367,7 +375,7 @@ class ThrustJet(VectorSprite):
         Returns:
             Danh sách các đỉnh đa giác đã biến đổi.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if self.accelerating and self.ship.inHyperSpace == False:
             self.color = (255, 50, 50)

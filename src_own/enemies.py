@@ -5,13 +5,14 @@ Cung cấp lớp Rock cho thiên thạch với bốn cấp kích thước,
 Debris cho hiệu ứng hạt khi phá hủy, và Saucer cho tàu địch
 với ba cấp độ khó sử dụng AI pathfinding.
 
-Last Modified: 2026-05-06
+Last Modified: 2026-05-13
 """
 
 import random
 from util.vectorsprites import *
 from shooter import *
 from soundManager import *
+from config import load_config
 from dsa.pathfinding import GridPathfinder
 
 class Rock(VectorSprite):
@@ -28,7 +29,7 @@ class Rock(VectorSprite):
         velocities: Vận tốc tối đa theo từng cấp.
         scales: Hệ số co giãn đa giác theo từng cấp.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
     largeRockType = 0
     mediumRockType = 1
@@ -49,10 +50,22 @@ class Rock(VectorSprite):
             position: Vị trí spawn, dạng Vector2d.
             rockType: Chỉ số cấp kích thước (0=lớn, 1=vừa, 2=nhỏ, 3=siêu nhỏ).
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
-        scale = Rock.scales[rockType]
-        velocity = Rock.velocities[rockType]                
+        cfg = load_config()
+        if rockType == self.largeRockType:
+            scale = cfg.get("rock_scale_large", self.scales[rockType])
+            velocity = cfg.get("rock_vel_large", self.velocities[rockType])
+        elif rockType == self.mediumRockType:
+            scale = cfg.get("rock_scale_medium", self.scales[rockType])
+            velocity = cfg.get("rock_vel_medium", self.velocities[rockType])
+        elif rockType == self.smallRockType:
+            scale = cfg.get("rock_scale_small", self.scales[rockType])
+            velocity = cfg.get("rock_vel_small", self.velocities[rockType])
+        else:
+            scale = cfg.get("rock_scale_tiny", self.scales[rockType])
+            velocity = cfg.get("rock_vel_tiny", self.velocities[rockType])
+        
         heading = Vector2d(random.uniform(-velocity, velocity), random.uniform(-velocity, velocity))
         
         if heading.x == 0:
@@ -77,7 +90,7 @@ class Rock(VectorSprite):
         Returns:
             Danh sách tuple (x, y) xác định các đỉnh đa giác.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if (Rock.rockShape == 1):
             pointlist = [(-4,-12), (6,-12), (13, -4), (13, 5), (6, 13), (0,13), (0,4),\
@@ -105,7 +118,7 @@ class Rock(VectorSprite):
         """
         Cập nhật vị trí và áp dụng xoay đều.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         VectorSprite.move(self)                        
         
@@ -122,7 +135,7 @@ class Debris(Point):
     Attributes:
         ttl: Số frame còn lại (mặc định 50).
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
 
     def __init__(self, position, stage):
@@ -133,7 +146,7 @@ class Debris(Point):
             position: Vị trí spawn, dạng Vector2d.
             stage: Instance Stage quản lý sprite.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         heading = Vector2d(random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5))
         Point.__init__(self, position, heading, stage)
@@ -143,7 +156,7 @@ class Debris(Point):
         """
         Cập nhật vị trí và làm mờ dần màu về đen.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         Point.move(self)
         r,g,b = self.color
@@ -174,7 +187,7 @@ class Saucer(Shooter):
         pathfinder: Instance GridPathfinder để tránh chướng ngại vật.
         fire_cooldown: Số frame còn lại trước khi được bắn tiếp.
 
-    Last Modified: 2026-05-06
+    Last Modified: 2026-05-13
     """
     largeSaucerType = 0
     smallSaucerType = 1
@@ -199,7 +212,7 @@ class Saucer(Shooter):
             saucerType: Chỉ số cấp độ khó (0=lớn, 1=vừa, 2=khó).
             ship: Tham chiếu đến Ship người chơi để ngắm bắn.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         position = Vector2d(0.0, random.randrange(0, stage.height))
         heading = Vector2d(self.velocities[saucerType], 0.0)
@@ -220,7 +233,17 @@ class Saucer(Shooter):
         Shooter.__init__(self, position, heading, newPointList, stage)
         self.color = self.colors[saucerType]
         self.maxBullets = self.maxBulletsList[saucerType]
-        self.fire_cooldown = 0
+        
+        cfg = load_config()
+        if saucerType == self.largeSaucerType:
+            self.heading.x = cfg.get("saucer_velocity_large", self.velocities[saucerType])
+            self.fire_cooldown = cfg.get("saucer_fire_delay_large", self.fire_delays[saucerType])
+        elif saucerType == self.smallSaucerType:
+            self.heading.x = cfg.get("saucer_velocity_medium", self.velocities[saucerType])
+            self.fire_cooldown = cfg.get("saucer_fire_delay_medium", self.fire_delays[saucerType])
+        else:
+            self.heading.x = cfg.get("saucer_velocity_hard", self.velocities[saucerType])
+            self.fire_cooldown = cfg.get("saucer_fire_delay_hard", self.fire_delays[saucerType])
         
     def move(self):        
         """
@@ -231,7 +254,7 @@ class Saucer(Shooter):
         đĩa bay khó dùng Weighted A* trên danger heatmap để tìm đường
         an toàn nhất trong khi tránh chướng ngại vật.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         ship_alive = self.ship is not None and self.ship in self.stage.spriteList and not self.ship.inHyperSpace
         
@@ -286,7 +309,7 @@ class Saucer(Shooter):
         Tuân thủ fire cooldown và giới hạn băng đạn theo cấp độ.
         Đạn kế thừa màu của đĩa bay để phân biệt trực quan.
 
-        Last Modified: 2026-05-06
+        Last Modified: 2026-05-13
         """
         if self.fire_cooldown > 0:
             self.fire_cooldown -= 1
